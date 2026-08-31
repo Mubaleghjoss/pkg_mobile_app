@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Bawaan SDK Flutter (bukan paket pihak ketiga): dibutuhkan agar
+  # showDatePicker/widget Material berbahasa Indonesia saat locale 'id'.
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.3
   intl: ^0.20.2
@@ -24,6 +28,7 @@ dependencies:
   path: ^1.9.1
   package_info_plus: ^10.2.1
   flutter_svg: ^2.3.0
+  flutter_local_notifications: 19.4.2
 
 dev_dependencies:
   flutter_test:

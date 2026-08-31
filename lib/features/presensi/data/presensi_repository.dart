@@ -115,7 +115,16 @@ class PresensiStatistics {
   final int tidakHadir;
   final int alpha;
   final int verified;
+  /// Dari backend: `(hadir + terlambat) / total` — terlambat dihitung masuk.
   final double persentaseKehadiran;
+
+  /// Persentase datang tepat waktu (terlambat tidak dihitung), dihitung di
+  /// klien dari rincian status supaya keterlambatan tetap terlihat meski
+  /// kehadiran tercatat 100%.
+  double get persentaseTepatWaktu =>
+      total == 0 ? 0 : (hadir / total) * 100;
+
+  bool get adaKeterlambatan => terlambat > 0;
 
   static int _int(Object? v) => v is int ? v : int.tryParse('$v') ?? 0;
 

@@ -18,6 +18,9 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // flutter_local_notifications 19.x memakai API java.time lewat
+        // desugaring; tanpa flag ini build release gagal pada minSdk < 26.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -54,4 +57,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Dibutuhkan oleh isCoreLibraryDesugaringEnabled di atas.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

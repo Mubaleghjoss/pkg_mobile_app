@@ -184,6 +184,21 @@ class PresensiStatistikScreen extends ConsumerWidget {
                               'terverifikasi',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
+                            // Terlambat dihitung hadir oleh backend; tampilkan
+                            // pembandingnya supaya keterlambatan tidak hilang.
+                            if (stat.adaKeterlambatan) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Termasuk ${stat.terlambat} terlambat · '
+                                'tepat waktu '
+                                '${stat.persentaseTepatWaktu.toStringAsFixed(2)}%',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: Colors.orange.shade800),
+                              ),
+                            ],
                           ],
                         ),
                       ),

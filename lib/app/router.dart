@@ -5,19 +5,34 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
+import '../features/game/presentation/arcade_screen.dart';
+import '../features/game/presentation/game_screen.dart';
+import '../features/gamifikasi/presentation/badge_screen.dart';
+import '../features/gamifikasi/presentation/poin_screen.dart';
+import '../features/karakter/presentation/karakter_reader_screen.dart';
+import '../features/karakter/presentation/karakter_screen.dart';
 import '../features/kelas/presentation/kelas_detail_screen.dart';
 import '../features/kelas/presentation/kelas_screen.dart';
+import '../features/materi/presentation/materi_detail_screen.dart';
+import '../features/materi/presentation/materi_screen.dart';
+import '../features/ortu/presentation/ortu_monitoring_screen.dart';
 import '../features/presensi/presentation/presensi_form_screen.dart';
 import '../features/presensi/presentation/presensi_screen.dart';
 import '../features/presensi/presentation/presensi_statistik_screen.dart';
 import '../features/presensi/presentation/scan_qr_screen.dart';
 import '../features/profil/presentation/change_password_screen.dart';
 import '../features/profil/presentation/profil_screen.dart';
+import '../features/quran/presentation/quran_form_screen.dart';
+import '../features/quran/presentation/quran_screen.dart';
 import '../features/siswa/presentation/siswa_detail_screen.dart';
 import '../features/siswa/presentation/siswa_form_screen.dart';
 import '../features/siswa/presentation/siswa_qr_screen.dart';
 import '../features/siswa/presentation/siswa_screen.dart';
+import '../features/tugas/presentation/tugas_screen.dart';
+import '../features/verifikasi/presentation/verifikasi_screen.dart';
+import '../core/storage/session_store.dart';
 import '../shared/widgets/animations.dart';
+import '../shared/widgets/floating_menu.dart';
 import '../shared/widgets/pkg_logo.dart';
 
 /// Halaman dengan transisi geser+fade dari kanan (Material 3 style).
@@ -86,7 +101,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!auth.isAuthenticated) {
         return loc == '/login' ? null : '/login';
       }
-      if (loc == '/login' || loc == '/splash') return '/';
+      // Dasbor '/' memanggil /dashboard/stats + /dashboard/recent-activities
+      // yang lingkupnya seluruh sekolah (total siswa, nama siswa lain), dan
+      // backend menolak token siswa/ortu di sana dengan 403 STAFF_ONLY.
+      // Jadi kedua aktor itu diarahkan ke beranda masing-masing.
+      final actor = auth.session?.actor ?? AuthActor.staff;
+      final berandaAktor = switch (actor) {
+        AuthActor.ortu => '/monitoring',
+        AuthActor.siswa => '/tugas',
+        AuthActor.staff => '/',
+      };
+      if (loc == '/login' || loc == '/splash') return berandaAktor;
+      if (loc == '/' && actor != AuthActor.staff) return berandaAktor;
       return null;
     },
     routes: [
@@ -163,6 +189,49 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) =>
             _sheetPage(child: const ChangePasswordScreen(), state: state),
       ),
+      // Pembaca materi 29 karakter (halaman penuh, di luar shell).
+      GoRoute(
+        path: '/karakter/:slug',
+        pageBuilder: (_, state) => _slidePage(
+          state: state,
+          child: KarakterReaderScreen(
+            slug: state.pathParameters['slug'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/materi/:id',
+        pageBuilder: (_, state) => _slidePage(
+          state: state,
+          child: MateriDetailScreen(id: _idOf(state)),
+        ),
+      ),
+      GoRoute(
+        path: '/quran/baru',
+        pageBuilder: (_, state) =>
+            _sheetPage(child: const QuranFormScreen(), state: state),
+      ),
+      // Gamifikasi & game: Scaffold + AppBar sendiri, jadi di luar ShellRoute.
+      GoRoute(
+        path: '/poin',
+        pageBuilder: (_, state) =>
+            _slidePage(child: const PoinScreen(), state: state),
+      ),
+      GoRoute(
+        path: '/game',
+        pageBuilder: (_, state) =>
+            _slidePage(child: const GameScreen(), state: state),
+      ),
+      GoRoute(
+        path: '/arcade',
+        pageBuilder: (_, state) =>
+            _slidePage(child: const ArcadeScreen(), state: state),
+      ),
+      GoRoute(
+        path: '/badge',
+        pageBuilder: (_, state) =>
+            _slidePage(child: const BadgeScreen(), state: state),
+      ),
       ShellRoute(
         builder: (context, state, child) =>
             HomeShell(state: state, child: child),
@@ -171,6 +240,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/siswa', builder: (_, _) => const SiswaScreen()),
           GoRoute(path: '/presensi', builder: (_, _) => const PresensiScreen()),
           GoRoute(path: '/kelas', builder: (_, _) => const KelasScreen()),
+          GoRoute(path: '/karakter', builder: (_, _) => const KarakterScreen()),
+          GoRoute(path: '/materi', builder: (_, _) => const MateriScreen()),
+          GoRoute(path: '/tugas', builder: (_, _) => const TugasScreen()),
+          GoRoute(path: '/quran', builder: (_, _) => const QuranScreen()),
+          // Pamong/admin: antrean verifikasi tugas PKG siswa binaan.
+          GoRoute(
+            path: '/verifikasi',
+            builder: (_, _) => const VerifikasiScreen(),
+          ),
+          // Orang tua: dasbor monitoring anak (read-only).
+          GoRoute(
+            path: '/monitoring',
+            builder: (_, _) => const OrtuMonitoringScreen(),
+          ),
+          // Gamifikasi & game dipasang di luar ShellRoute karena keduanya
+          // membawa Scaffold + AppBar sendiri (PoinScreen punya TabBar).
         ],
       ),
     ],
@@ -238,18 +323,218 @@ class _PkgSplashScreenState extends State<PkgSplashScreen>
 ///
 /// Isi tab dianimasikan: berpindah tab menggeser konten ke arah yang sesuai,
 /// dan usap (swipe) horizontal pada body memindahkan tab seperti PageView.
+///
+/// Bilah bawah sengaja dibatasi 3 tab utama + satu slot "Lainnya". Slot itu
+/// tidak berpindah halaman, tetapi membuka panel mengambang
+/// ([showFloatingMenu]) berisi menu sisanya, sehingga navigasi tetap ringkas
+/// tanpa menyembunyikan fitur.
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key, required this.state, required this.child});
 
   final GoRouterState state;
   final Widget child;
 
-  static const tabs = <({String path, String label, IconData icon})>[
-    (path: '/', label: 'Dashboard', icon: Icons.dashboard_outlined),
-    (path: '/siswa', label: 'Siswa', icon: Icons.groups_outlined),
-    (path: '/presensi', label: 'Presensi', icon: Icons.fact_check_outlined),
-    (path: '/kelas', label: 'Kelas', icon: Icons.class_outlined),
-  ];
+  static const _dashboard =
+      (path: '/', label: 'Dashboard', icon: Icons.dashboard_outlined);
+
+  /// Tab dibedakan per aktor supaya tiap peran hanya melihat menu yang
+  /// endpoint-nya memang boleh dia panggil:
+  /// - siswa  : tugas PKG, materi/karakter, tracer Quran
+  /// - ortu   : monitoring (read-only) + materi/karakter
+  /// - staff  : data sekolah + antrean verifikasi tugas
+  ///
+  /// Daftar staff sengaja tidak digerbangi permission di sini; layar di
+  /// dalamnya sudah menampilkan pesan galat backend bila aksesnya ditolak.
+  static List<({String path, String label, IconData icon})> tabsFor(
+    AuthSession? session,
+  ) {
+    switch (session?.actor ?? AuthActor.staff) {
+      case AuthActor.siswa:
+        // Tanpa _dashboard: endpoint /dashboard/* khusus staf (403 STAFF_ONLY).
+        return const [
+          (path: '/tugas', label: 'Tugas', icon: Icons.checklist_outlined),
+          (
+            path: '/karakter',
+            label: 'Karakter',
+            icon: Icons.auto_stories_outlined
+          ),
+          (path: '/quran', label: 'Quran', icon: Icons.menu_book_outlined),
+        ];
+      case AuthActor.ortu:
+        return const [
+          (
+            path: '/monitoring',
+            label: 'Monitoring',
+            icon: Icons.insights_outlined
+          ),
+          (
+            path: '/karakter',
+            label: 'Karakter',
+            icon: Icons.auto_stories_outlined
+          ),
+          (
+            path: '/materi',
+            label: 'Materi',
+            icon: Icons.folder_open_outlined
+          ),
+        ];
+      case AuthActor.staff:
+        return const [
+          _dashboard,
+          (
+            path: '/verifikasi',
+            label: 'Verifikasi',
+            icon: Icons.verified_outlined
+          ),
+          (path: '/siswa', label: 'Siswa', icon: Icons.groups_outlined),
+        ];
+    }
+  }
+
+  /// Menu tambahan di balik slot "Lainnya".
+  ///
+  /// `inShell: true` berarti rutenya anak [ShellRoute] sehingga dibuka dengan
+  /// `context.go` dan bilah navigasi tetap terlihat; sisanya halaman penuh
+  /// (`context.push`) yang membawa Scaffold sendiri.
+  static List<
+      ({
+        String path,
+        String label,
+        IconData icon,
+        String? deskripsi,
+        bool inShell,
+      })> extrasFor(AuthSession? session) {
+    switch (session?.actor ?? AuthActor.staff) {
+      case AuthActor.siswa:
+        return const [
+          (
+            path: '/materi',
+            label: 'Materi',
+            icon: Icons.folder_open_outlined,
+            deskripsi: 'Bahan bacaan',
+            inShell: true,
+          ),
+          (
+            path: '/poin',
+            label: 'Poin',
+            icon: Icons.leaderboard_outlined,
+            deskripsi: 'Level & peringkat',
+            inShell: false,
+          ),
+          (
+            path: '/badge',
+            label: 'Badge',
+            icon: Icons.emoji_events_outlined,
+            deskripsi: 'Koleksi lencana',
+            inShell: false,
+          ),
+          (
+            path: '/game',
+            label: 'Game',
+            icon: Icons.sports_esports_outlined,
+            deskripsi: 'Tebak & rangkai',
+            inShell: false,
+          ),
+          (
+            path: '/arcade',
+            label: 'Arcade',
+            icon: Icons.timer_outlined,
+            deskripsi: 'Rangkai bertempo',
+            inShell: false,
+          ),
+          (
+            path: '/profil',
+            label: 'Profil',
+            icon: Icons.account_circle_outlined,
+            deskripsi: 'Akun saya',
+            inShell: false,
+          ),
+        ];
+      case AuthActor.ortu:
+        return const [
+          (
+            path: '/tugas',
+            label: 'Tugas anak',
+            icon: Icons.checklist_outlined,
+            deskripsi: 'Hanya memantau',
+            inShell: true,
+          ),
+          (
+            path: '/poin',
+            label: 'Poin',
+            icon: Icons.leaderboard_outlined,
+            deskripsi: 'Level & peringkat',
+            inShell: false,
+          ),
+          (
+            path: '/badge',
+            label: 'Badge',
+            icon: Icons.emoji_events_outlined,
+            deskripsi: 'Koleksi lencana',
+            inShell: false,
+          ),
+          (
+            path: '/game',
+            label: 'Papan skor',
+            icon: Icons.sports_esports_outlined,
+            deskripsi: 'Hasil game anak',
+            inShell: false,
+          ),
+          (
+            path: '/profil',
+            label: 'Profil',
+            icon: Icons.account_circle_outlined,
+            deskripsi: 'Akun saya',
+            inShell: false,
+          ),
+        ];
+      case AuthActor.staff:
+        return const [
+          (
+            path: '/presensi',
+            label: 'Presensi',
+            icon: Icons.fact_check_outlined,
+            deskripsi: 'Catatan harian',
+            inShell: true,
+          ),
+          (
+            path: '/kelas',
+            label: 'Kelas',
+            icon: Icons.class_outlined,
+            deskripsi: 'Data kelas',
+            inShell: true,
+          ),
+          (
+            path: '/karakter',
+            label: 'Karakter',
+            icon: Icons.auto_stories_outlined,
+            deskripsi: '29 karakter',
+            inShell: true,
+          ),
+          (
+            path: '/materi',
+            label: 'Materi',
+            icon: Icons.folder_open_outlined,
+            deskripsi: 'Bahan ajar',
+            inShell: true,
+          ),
+          (
+            path: '/presensi/statistik',
+            label: 'Statistik',
+            icon: Icons.query_stats_outlined,
+            deskripsi: 'Rekap kehadiran',
+            inShell: false,
+          ),
+          (
+            path: '/profil',
+            label: 'Profil',
+            icon: Icons.account_circle_outlined,
+            deskripsi: 'Akun saya',
+            inShell: false,
+          ),
+        ];
+    }
+  }
 
   @override
   ConsumerState<HomeShell> createState() => _HomeShellState();
@@ -258,24 +543,87 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _previousIndex = 0;
 
+  /// Daftar tab aktif mengikuti aktor yang sedang login.
+  List<({String path, String label, IconData icon})> get _tabs =>
+      HomeShell.tabsFor(ref.read(authControllerProvider).session);
+
+  List<
+      ({
+        String path,
+        String label,
+        IconData icon,
+        String? deskripsi,
+        bool inShell,
+      })> get _extras =>
+      HomeShell.extrasFor(ref.read(authControllerProvider).session);
+
+  /// Indeks tab utama; -1 bila lokasi sekarang berasal dari menu "Lainnya".
+  int get _tabIndex =>
+      _tabs.indexWhere((t) => t.path == widget.state.matchedLocation);
+
   int get _index {
-    final i = HomeShell.tabs
-        .indexWhere((t) => t.path == widget.state.matchedLocation);
+    final i = _tabIndex;
     return i < 0 ? 0 : i;
+  }
+
+  /// Slot yang disorot di bilah navigasi. Rute dari menu "Lainnya" menyorot
+  /// slot "Lainnya" itu sendiri, bukan tab pertama.
+  int get _selectedSlot => _tabIndex < 0 ? _tabs.length : _tabIndex;
+
+  /// Label untuk subtitle AppBar, termasuk saat berada di rute "Lainnya".
+  String get _labelAktif {
+    final i = _tabIndex;
+    if (i >= 0) return _tabs[i].label;
+    final extra = _extras
+        .where((e) => e.path == widget.state.matchedLocation)
+        .firstOrNull;
+    return extra?.label ?? _tabs[_index].label;
   }
 
   @override
   void didUpdateWidget(covariant HomeShell oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final old = HomeShell.tabs
-        .indexWhere((t) => t.path == oldWidget.state.matchedLocation);
+    final old =
+        _tabs.indexWhere((t) => t.path == oldWidget.state.matchedLocation);
     if (old >= 0 && old != _index) _previousIndex = old;
   }
 
   void _goTab(int i) {
-    if (i == _index) return;
+    if (i == _index && _tabIndex >= 0) return;
     _previousIndex = _index;
-    context.go(HomeShell.tabs[i].path);
+    context.go(_tabs[i].path);
+  }
+
+  /// Slot terakhir bukan halaman: ia membuka panel menu mengambang.
+  void _onSlotSelected(int slot) {
+    if (slot >= _tabs.length) {
+      _bukaMenuLainnya();
+      return;
+    }
+    _goTab(slot);
+  }
+
+  Future<void> _bukaMenuLainnya() async {
+    final lokasi = widget.state.matchedLocation;
+    await showFloatingMenu(
+      context,
+      items: [
+        for (final e in _extras)
+          FloatingMenuItem(
+            label: e.label,
+            icon: e.icon,
+            deskripsi: e.deskripsi,
+            aktif: e.path == lokasi,
+            onTap: () {
+              if (e.inShell) {
+                context.go(e.path);
+              } else {
+                context.push(e.path);
+              }
+            },
+          ),
+      ],
+    );
   }
 
   void _onHorizontalDrag(DragEndDetails d) {
@@ -283,7 +631,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     if (v.abs() < 220) return;
     // Geser ke kiri (velocity negatif) = maju ke tab berikutnya.
     final next = v < 0 ? _index + 1 : _index - 1;
-    if (next < 0 || next >= HomeShell.tabs.length) return;
+    if (next < 0 || next >= _tabs.length) return;
     _goTab(next);
   }
 
@@ -327,13 +675,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final scaffold = Scaffold(
       appBar: AppBar(
         titleSpacing: 12,
-        title: PkgWordmark(subtitle: HomeShell.tabs[_index].label),
+        title: PkgWordmark(subtitle: _labelAktif),
         actions: [
-          IconButton(
-            tooltip: 'Profil saya',
-            icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () => context.push('/profil'),
-          ),
           IconButton(
             tooltip: 'Keluar',
             icon: const Icon(Icons.logout),
@@ -346,14 +689,20 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       bottomNavigationBar: wide
           ? null
           : NavigationBar(
-              selectedIndex: _index,
-              onDestinationSelected: _goTab,
-              destinations: HomeShell.tabs
-                  .map((t) => NavigationDestination(
-                        icon: Icon(t.icon),
-                        label: t.label,
-                      ))
-                  .toList(growable: false),
+              selectedIndex: _selectedSlot,
+              onDestinationSelected: _onSlotSelected,
+              destinations: [
+                ..._tabs.map((t) => NavigationDestination(
+                      icon: Icon(t.icon),
+                      label: t.label,
+                    )),
+                // Slot terakhir: pembuka panel menu mengambang.
+                const NavigationDestination(
+                  icon: Icon(Icons.apps_outlined),
+                  selectedIcon: Icon(Icons.apps),
+                  label: 'Lainnya',
+                ),
+              ],
             ),
     );
 
@@ -362,19 +711,24 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     return Row(
       children: [
         NavigationRail(
-          selectedIndex: _index,
-          onDestinationSelected: _goTab,
+          selectedIndex: _selectedSlot,
+          onDestinationSelected: _onSlotSelected,
           leading: const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: PkgLogo(size: 36),
           ),
           labelType: NavigationRailLabelType.all,
-          destinations: HomeShell.tabs
-              .map((t) => NavigationRailDestination(
-                    icon: Icon(t.icon),
-                    label: Text(t.label),
-                  ))
-              .toList(growable: false),
+          destinations: [
+            ..._tabs.map((t) => NavigationRailDestination(
+                  icon: Icon(t.icon),
+                  label: Text(t.label),
+                )),
+            const NavigationRailDestination(
+              icon: Icon(Icons.apps_outlined),
+              selectedIcon: Icon(Icons.apps),
+              label: Text('Lainnya'),
+            ),
+          ],
         ),
         const VerticalDivider(width: 1),
         Expanded(child: scaffold),
@@ -384,7 +738,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   /// FAB kontekstual per tab. Aksi tulis digerbangi permission dari `/me`.
   Widget? _fabFor(int index, AuthState auth) {
-    final path = HomeShell.tabs[index].path;
+    final path = _tabs[index].path;
     if (path == '/presensi') {
       // Scan QR: endpoint publik di backend, jadi tidak digerbangi permission.
       return FloatingActionButton.extended(

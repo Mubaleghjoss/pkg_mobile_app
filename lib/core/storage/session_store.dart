@@ -4,6 +4,27 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Sesi login yang dipersist di perangkat.
+/// Jenis pemilik token. Backend punya dua tabel akun berbeda:
+/// `users` (admin/pamong, endpoint `/login`) dan `siswa` (siswa & orang tua,
+/// endpoint `/siswa/login` dan `/ortu/login`). Token keduanya sama-sama
+/// Sanctum, tetapi endpoint yang boleh diakses berbeda — karena itu jenis
+/// aktor harus ikut dipersist, bukan disimpulkan dari `role`.
+enum AuthActor {
+  staff,
+  siswa,
+  ortu;
+
+  static AuthActor parse(Object? raw) => switch ('$raw') {
+        'siswa' => AuthActor.siswa,
+        'ortu' => AuthActor.ortu,
+        _ => AuthActor.staff,
+      };
+
+  /// Siswa & ortu memakai antarmuka pembinaan (tugas, quran, materi),
+  /// bukan antarmuka administrasi.
+  bool get isGenerus => this != AuthActor.staff;
+}
+
 class AuthSession {
   const AuthSession({
     required this.token,
@@ -11,10 +32,12 @@ class AuthSession {
     required this.username,
     required this.role,
     required this.permissions,
+    this.actor = AuthActor.staff,
     this.userId,
     this.email,
     this.phone,
     this.lastLoginAt,
+    this.displayName,
   });
 
   final String token;
@@ -22,6 +45,12 @@ class AuthSession {
   final String username;
   final String? role;
   final List<String> permissions;
+
+  /// Pemilik token: staff (users) vs siswa/ortu (tabel siswa).
+  final AuthActor actor;
+
+  /// Nama yang enak dibaca di AppBar (nama siswa / nama staff).
+  final String? displayName;
 
   /// Field profil dari `GET /me` — dipakai layar Profil. Null bila sesi dibuat
   /// dari respons login yang tidak mengirimkannya.
@@ -41,6 +70,8 @@ class AuthSession {
         'username': username,
         'role': role,
         'permissions': permissions,
+        'actor': actor.name,
+        'display_name': displayName,
         'user_id': userId,
         'email': email,
         'phone': phone,
@@ -59,6 +90,8 @@ class AuthSession {
               ?.map((e) => '$e')
               .toList(growable: false) ??
           const <String>[],
+      actor: AuthActor.parse(json['actor']),
+      displayName: json['display_name'] as String?,
       userId: json['user_id'] as int?,
       email: json['email'] as String?,
       phone: json['phone'] as String?,
@@ -72,6 +105,8 @@ class AuthSession {
         username: username,
         role: role,
         permissions: permissions,
+        actor: actor,
+        displayName: displayName,
         userId: userId,
         email: email,
         phone: phone,

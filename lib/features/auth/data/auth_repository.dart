@@ -74,6 +74,135 @@ class AuthRepository {
     }
   }
 
+  /// Login siswa: `POST /api/v1/siswa/login` dengan field `nis` + `password`.
+  ///
+  /// Respons dibungkus `{success, data: {token, user: {...}}}` — berbeda dari
+  /// `/login` staff yang menaruh token di akar body.
+  Future<ApiResult<AuthSession>> loginSiswa({
+    required String nis,
+    required String password,
+  }) =>
+      _loginGenerus(
+        path: '/siswa/login',
+        body: {'nis': nis, 'password': password},
+        actor: AuthActor.siswa,
+        fallbackUsername: nis,
+      );
+
+  /// Login orang tua: `POST /api/v1/ortu/login` (`username` + `password`).
+  Future<ApiResult<AuthSession>> loginOrtu({
+    required String username,
+    required String password,
+  }) =>
+      _loginGenerus(
+        path: '/ortu/login',
+        body: {'username': username, 'password': password},
+        actor: AuthActor.ortu,
+        fallbackUsername: username,
+      );
+
+  Future<ApiResult<AuthSession>> _loginGenerus({
+    required String path,
+    required Map<String, String> body,
+    required AuthActor actor,
+    required String fallbackUsername,
+  }) async {
+    try {
+      final mapped = ApiResponseMapper.map(
+        await _dio.post<dynamic>(
+          path,
+          data: body,
+          options: Options(headers: {'Content-Type': 'application/json'}),
+        ),
+      );
+      if (!mapped.ok) {
+        return ApiResult.failure(
+          mapped.error ?? 'Login gagal',
+          statusCode: mapped.statusCode,
+          fieldErrors: mapped.fieldErrors,
+        );
+      }
+
+      final data = (mapped.data?['data'] as Map?)?.cast<String, dynamic>() ??
+          mapped.data ??
+          const <String, dynamic>{};
+      final token = '${data['token'] ?? ''}';
+      if (token.isEmpty) {
+        return ApiResult.failure(
+          'Server tidak mengirim token.',
+          statusCode: mapped.statusCode,
+        );
+      }
+      final user = (data['user'] as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
+
+      final session = AuthSession(
+        token: token,
+        // Backend memberi masa berlaku dalam hari (`expires_in_days`).
+        expiresAt: _expiryFromDays(data['expires_in_days']),
+        username: '${user['nis'] ?? fallbackUsername}',
+        role: user['role'] as String? ?? actor.name,
+        // Siswa & ortu tidak memakai sistem permission `users`; pembatasan
+        // aksi ditegakkan backend lewat ability token.
+        permissions: const <String>[],
+        actor: actor,
+        displayName: user['nama'] as String?,
+        userId: user['id'] as int?,
+      );
+      await _store.write(session);
+      return ApiResult.success(session, statusCode: mapped.statusCode);
+    } catch (e) {
+      final mapped = ApiResponseMapper.mapError(e);
+      return ApiResult.failure(
+        mapped.error ?? 'Login gagal',
+        statusCode: mapped.statusCode,
+        fieldErrors: mapped.fieldErrors,
+      );
+    }
+  }
+
+  static DateTime? _expiryFromDays(Object? raw) {
+    final days = raw is int ? raw : int.tryParse('$raw');
+    if (days == null) return null;
+    return DateTime.now().add(Duration(days: days));
+  }
+
+  /// Validasi token siswa/ortu lewat `GET /api/v1/siswa-account/me`.
+  Future<ApiResult<AuthSession>> meGenerus() async {
+    try {
+      final mapped = ApiResponseMapper.map(
+        await _dio.get<dynamic>('/siswa-account/me'),
+      );
+      final stored = await _store.read();
+      if (!mapped.ok || stored == null) {
+        return ApiResult.failure(
+          mapped.error ?? 'Gagal memuat profil',
+          statusCode: stored == null ? 401 : mapped.statusCode,
+        );
+      }
+      final user = (mapped.data?['data'] as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
+      final refreshed = AuthSession(
+        token: stored.token,
+        expiresAt: stored.expiresAt,
+        username: '${user['nis'] ?? stored.username}',
+        role: user['role'] as String? ?? stored.role,
+        permissions: const <String>[],
+        actor: AuthActor.parse(user['role'] ?? stored.actor.name),
+        displayName: user['nama'] as String? ?? stored.displayName,
+        userId: user['id'] as int? ?? stored.userId,
+      );
+      await _store.write(refreshed);
+      return ApiResult.success(refreshed, statusCode: mapped.statusCode);
+    } catch (e) {
+      final mapped = ApiResponseMapper.mapError(e);
+      return ApiResult.failure(
+        mapped.error ?? 'Gagal memuat profil',
+        statusCode: mapped.statusCode,
+      );
+    }
+  }
+
   /// Ambil ulang profil + permission (dipakai saat app start untuk validasi token).
   Future<ApiResult<AuthSession>> me() async {
     try {
@@ -179,9 +308,17 @@ class AuthRepository {
 
   /// Logout: cabut token di server lalu bersihkan penyimpanan lokal.
   /// Sesi lokal SELALU dibersihkan, bahkan bila panggilan server gagal.
+  ///
+  /// Endpoint berbeda per jenis token: staff memakai `/logout`, sedangkan
+  /// siswa/ortu memakai `/siswa-account/logout` (guard `auth:sanctum` sama,
+  /// tetapi controller staff menolak token milik model Siswa).
   Future<void> logout() async {
+    final stored = await _store.read();
+    final path = (stored?.actor.isGenerus ?? false)
+        ? '/siswa-account/logout'
+        : '/logout';
     try {
-      await _dio.post<dynamic>('/logout');
+      await _dio.post<dynamic>(path);
     } catch (_) {
       // diabaikan: token lokal tetap dibuang
     } finally {

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/network/api_result.dart';
 import '../../../core/storage/session_store.dart';
 
 enum AuthStatus { unknown, unauthenticated, authenticated }
@@ -64,7 +65,9 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
 
-    final result = await repo.me();
+    // Endpoint verifikasi berbeda: token siswa/ortu ditolak oleh `/me` staff.
+    final result =
+        stored.actor.isGenerus ? await repo.meGenerus() : await repo.me();
     if (result.ok && result.data != null) {
       state = AuthState(
         status: AuthStatus.authenticated,
@@ -94,7 +97,34 @@ class AuthController extends Notifier<AuthState> {
     final result = await ref
         .read(authRepositoryProvider)
         .login(username: username, password: password);
+    return _finishLogin(result);
+  }
 
+  /// Login siswa dengan NIS.
+  Future<bool> loginSiswa({
+    required String nis,
+    required String password,
+  }) async {
+    state = state.copyWith(submitting: true, clearError: true);
+    final result = await ref
+        .read(authRepositoryProvider)
+        .loginSiswa(nis: nis, password: password);
+    return _finishLogin(result);
+  }
+
+  /// Login orang tua dengan username wali.
+  Future<bool> loginOrtu({
+    required String username,
+    required String password,
+  }) async {
+    state = state.copyWith(submitting: true, clearError: true);
+    final result = await ref
+        .read(authRepositoryProvider)
+        .loginOrtu(username: username, password: password);
+    return _finishLogin(result);
+  }
+
+  bool _finishLogin(ApiResult<AuthSession> result) {
     if (result.ok && result.data != null) {
       state = AuthState(status: AuthStatus.authenticated, session: result.data);
       return true;

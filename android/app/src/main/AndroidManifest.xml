@@ -3,6 +3,8 @@
          di manifest debug/profile, sehingga build release tidak bisa mengakses
          jaringan sama sekali. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Notifikasi lokal saat tugas PKG diverifikasi pamong (Android 13+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Untuk scan QR presensi (mobile_scanner). -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
