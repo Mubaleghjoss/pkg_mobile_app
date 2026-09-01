@@ -164,6 +164,86 @@ class QuranRepository {
     }
   }
 
+  Future<ApiResult<QuranBarcodeFlow>> identifyBarcode(
+    String sheetPayload,
+  ) async {
+    try {
+      final mapped = ApiResponseMapper.map(
+        await _dio.post<dynamic>(
+          '/quran/barcode/identify',
+          data: {'sheet_payload': sheetPayload},
+          options: Options(headers: {'Content-Type': 'application/json'}),
+        ),
+      );
+      if (!mapped.ok) {
+        return ApiResult.failure(
+          mapped.error ?? 'Barcode lembar tidak dapat dikenali',
+          statusCode: mapped.statusCode,
+          fieldErrors: mapped.fieldErrors,
+        );
+      }
+      final data = (mapped.data?['data'] as Map?)?.cast<String, dynamic>();
+      if (data == null) {
+        return ApiResult.failure(
+          'Respons tidak berisi data lembar.',
+          statusCode: mapped.statusCode,
+        );
+      }
+      return ApiResult.success(
+        QuranBarcodeFlow.fromJson(data),
+        statusCode: mapped.statusCode,
+      );
+    } catch (e) {
+      final err = ApiResponseMapper.mapError(e);
+      return ApiResult.failure(
+        err.error ?? 'Barcode lembar tidak dapat dikenali',
+        statusCode: err.statusCode,
+        fieldErrors: err.fieldErrors,
+      );
+    }
+  }
+
+  Future<ApiResult<QuranEntry>> storeBarcode(
+    QuranBarcodeSubmission submission,
+  ) async {
+    try {
+      final mapped = ApiResponseMapper.map(
+        await _dio.post<dynamic>(
+          '/quran/barcode/store',
+          data: submission.toJson(),
+          options: Options(headers: {'Content-Type': 'application/json'}),
+        ),
+      );
+      if (!mapped.ok) {
+        return ApiResult.failure(
+          mapped.error ?? 'Gagal menyimpan hasil tracer',
+          statusCode: mapped.statusCode,
+          fieldErrors: mapped.fieldErrors,
+        );
+      }
+      final wrapper =
+          (mapped.data?['data'] as Map?)?.cast<String, dynamic>();
+      final entry = (wrapper?['entry'] as Map?)?.cast<String, dynamic>();
+      if (entry == null) {
+        return ApiResult.failure(
+          'Respons tidak berisi catatan bacaan.',
+          statusCode: mapped.statusCode,
+        );
+      }
+      return ApiResult.success(
+        QuranEntry.fromJson(entry),
+        statusCode: mapped.statusCode,
+      );
+    } catch (e) {
+      final err = ApiResponseMapper.mapError(e);
+      return ApiResult.failure(
+        err.error ?? 'Gagal menyimpan hasil tracer',
+        statusCode: err.statusCode,
+        fieldErrors: err.fieldErrors,
+      );
+    }
+  }
+
   /// Hapus entri manual yang masih pending.
   Future<ApiResult<bool>> destroy(int id) async {
     try {

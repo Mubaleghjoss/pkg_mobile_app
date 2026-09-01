@@ -129,13 +129,17 @@ class PresensiStatistics {
   static int _int(Object? v) => v is int ? v : int.tryParse('$v') ?? 0;
 
   /// Pasangan (label, jumlah) untuk grafik batang.
+  ///
+  /// Backend mengirim `alpha` sebagai *alias* dari `tidak_hadir` (nilainya
+  /// identik, lihat EloquentPresensiRepository::getStatistics), jadi keduanya
+  /// tidak boleh ditampilkan sebagai baris terpisah — dulu itu membuat jumlah
+  /// rincian melebihi `total`.
   List<(String, int)> get breakdown => [
         ('Hadir', hadir),
         ('Terlambat', terlambat),
         ('Izin', izin),
         ('Sakit', sakit),
-        ('Alpha', alpha),
-        ('Tidak hadir', tidakHadir),
+        ('Tidak hadir / alpha', tidakHadir == 0 ? alpha : tidakHadir),
       ];
 }
 

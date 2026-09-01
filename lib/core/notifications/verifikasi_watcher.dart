@@ -38,9 +38,18 @@ class VerifikasiWatcher {
   ///
   /// Mengembalikan jumlah notifikasi yang benar-benar ditampilkan.
   Future<int> periksa(List<({int id, String nama})> terverifikasi) async {
-    if (terverifikasi.isEmpty) return 0;
-
     final prefs = await _resolvePrefs();
+
+    // Tetapkan garis dasar meski belum ada satu pun verifikasi. Tanpa ini,
+    // kunci baru lahir saat verifikasi pertama muncul sehingga verifikasi itu
+    // dianggap "riwayat lama" dan notifikasinya ikut ditelan.
+    if (terverifikasi.isEmpty) {
+      if (!prefs.containsKey(_key)) {
+        await prefs.setStringList(_key, const <String>[]);
+      }
+      return 0;
+    }
+
     final terlihat = prefs.getStringList(_key)?.toSet() ?? <String>{};
 
     final baru = terverifikasi

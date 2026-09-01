@@ -237,7 +237,10 @@ class _KartuRekor extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Rekor arcade Anda: ${info.skorTerbaikArcade} '
+                // Akun ortu tidak pernah bermain: skor yang tampil adalah
+                // rekor anaknya, jadi jangan disebut "Anda".
+                '${info.hanyaMemantau ? 'Rekor arcade anak' : 'Rekor arcade Anda'}'
+                ': ${info.skorTerbaikArcade} '
                 '(combo ${info.comboTerbaikArcade})',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),

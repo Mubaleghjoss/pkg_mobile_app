@@ -87,64 +87,68 @@ class _FloatingMenuPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final lebar = MediaQuery.sizeOf(context).width;
+    final tinggi = MediaQuery.sizeOf(context).height;
     // Dua kolom di ponsel, tiga saat layar cukup lebar.
     final kolom = lebar >= 520 ? 3 : 2;
+    final maxPanelHeight = (tinggi - bottomInset - 24).clamp(160.0, tinggi);
 
     return Align(
       alignment: Alignment.bottomCenter,
       child: Padding(
         padding: EdgeInsets.fromLTRB(12, 24, 12, bottomInset),
-        child: Material(
-          color: scheme.surfaceContainerHigh,
-          elevation: 12,
-          borderRadius: BorderRadius.circular(24),
-          clipBehavior: Clip.antiAlias,
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 38,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: scheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(2),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxPanelHeight),
+          child: Material(
+            color: scheme.surfaceContainerHigh,
+            elevation: 12,
+            borderRadius: BorderRadius.circular(24),
+            clipBehavior: Clip.antiAlias,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: scheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    judul,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  // shrinkWrap + physics mati: panel setinggi isinya, tidak
-                  // memaksa tinggi tak terbatas di dalam Column.
-                  GridView.count(
-                    crossAxisCount: kolom,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 1.55,
-                    children: [
-                      for (var i = 0; i < items.length; i++)
-                        FadeSlideIn(
-                          index: i,
-                          duration: const Duration(milliseconds: 260),
-                          offset: const Offset(0, 0.14),
-                          child: _MenuKotak(item: items[i]),
-                        ),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 14),
+                    Text(
+                      judul,
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 12),
+                    Flexible(
+                      child: GridView.count(
+                        crossAxisCount: kolom,
+                        shrinkWrap: true,
+                        physics: const ClampingScrollPhysics(),
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 1.55,
+                        children: [
+                          for (var i = 0; i < items.length; i++)
+                            FadeSlideIn(
+                              index: i,
+                              duration: const Duration(milliseconds: 260),
+                              offset: const Offset(0, 0.14),
+                              child: _MenuKotak(item: items[i]),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -199,18 +203,16 @@ class _MenuKotak extends StatelessWidget {
                 item.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
               if (item.deskripsi != null)
                 Text(
                   item.deskripsi!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.outline,
-                      ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: scheme.outline),
                 ),
             ],
           ),

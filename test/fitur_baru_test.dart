@@ -92,6 +92,24 @@ void main() {
       expect(stat.persentaseTepatWaktu, closeTo(87.5, 0.001));
       // Rincian untuk grafik tetap memuat baris terlambat.
       expect(stat.breakdown, contains(('Terlambat', 1)));
+      // `alpha` adalah alias `tidak_hadir` di backend, jadi rincian tidak boleh
+      // menghitungnya dua kali (dulu total rincian jadi melebihi `total`).
+      final stat2 = PresensiStatistics.fromJson(const {
+        'total': 75,
+        'hadir': 55,
+        'terlambat': 16,
+        'izin': 2,
+        'sakit': 1,
+        'tidak_hadir': 1,
+        'alpha': 1,
+        'verified': 71,
+        'persentase_kehadiran': 94.67,
+      });
+      expect(stat2.breakdown.length, 5);
+      expect(
+        stat2.breakdown.fold<int>(0, (a, e) => a + e.$2),
+        stat2.total,
+      );
     });
   });
 
@@ -160,13 +178,19 @@ void main() {
       expect(notif.dipanggil.single.isi, contains('dan lainnya'));
     });
 
-    test('daftar kosong tidak menyentuh penyimpanan', () async {
+    test('daftar kosong menetapkan baseline kosong, tanpa notifikasi', () async {
       final notif = _NotifikasiPalsu();
       final prefs = await SharedPreferences.getInstance();
       final watcher = VerifikasiWatcher(notifikasi: notif, prefs: prefs);
 
       expect(await watcher.periksa([]), 0);
-      expect(prefs.getStringList('pkg_verifikasi_terlihat'), isNull);
+      expect(notif.dipanggil, isEmpty);
+      // Baseline sudah ada, jadi verifikasi berikutnya dianggap benar-benar baru.
+      expect(prefs.getStringList('pkg_verifikasi_terlihat'), isEmpty);
+
+      final n = await watcher.periksa([(id: 9, nama: 'Salat Duha')]);
+      expect(n, 1);
+      expect(notif.dipanggil.single.judul, 'Tugas diverifikasi pamong');
     });
   });
 

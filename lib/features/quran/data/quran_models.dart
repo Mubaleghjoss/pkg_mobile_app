@@ -1,3 +1,124 @@
+class QuranBarcodeStudent {
+  const QuranBarcodeStudent({
+    required this.name,
+    required this.maskedNis,
+    required this.schoolGrade,
+    required this.group,
+  });
+
+  final String name;
+  final String maskedNis;
+  final String schoolGrade;
+  final String group;
+
+  factory QuranBarcodeStudent.fromJson(Map<String, dynamic> json) =>
+      QuranBarcodeStudent(
+        name: '${json['name'] ?? ''}',
+        maskedNis: '${json['masked_nis'] ?? ''}',
+        schoolGrade: '${json['school_grade'] ?? ''}',
+        group: '${json['group'] ?? ''}',
+      );
+}
+
+class QuranBarcodeFlow {
+  const QuranBarcodeFlow({
+    required this.id,
+    required this.student,
+    this.expiresAt,
+  });
+
+  final String id;
+  final DateTime? expiresAt;
+  final QuranBarcodeStudent student;
+
+  factory QuranBarcodeFlow.fromJson(Map<String, dynamic> json) =>
+      QuranBarcodeFlow(
+        id: '${json['flow_id'] ?? ''}',
+        expiresAt: DateTime.tryParse('${json['expires_at']}')?.toLocal(),
+        student: QuranBarcodeStudent.fromJson(
+          (json['student'] as Map?)?.cast<String, dynamic>() ??
+              const <String, dynamic>{},
+        ),
+      );
+}
+
+class QuranBarcodeFormValidator {
+  const QuranBarcodeFormValidator._();
+
+  static String? validate({
+    required List<QuranSurah> surahs,
+    required int surahStart,
+    required int ayahStart,
+    required int surahEnd,
+    required int ayahEnd,
+    int? pageStart,
+    int? pageEnd,
+  }) {
+    QuranSurah? find(int number) {
+      for (final surah in surahs) {
+        if (surah.number == number) return surah;
+      }
+      return null;
+    }
+
+    final start = find(surahStart);
+    final end = find(surahEnd);
+    if (start == null || end == null) return 'Pilih surat awal dan akhir.';
+    if (ayahStart < 1 || ayahStart > start.ayahTotal) {
+      return 'Ayat awal melebihi jumlah ayat ${start.nama}.';
+    }
+    if (surahEnd < surahStart) {
+      return 'Surat akhir tidak boleh berada sebelum surat awal.';
+    }
+    if (ayahEnd < 1 || ayahEnd > end.ayahTotal) {
+      return 'Ayat akhir melebihi jumlah ayat ${end.nama}.';
+    }
+    if (surahStart == surahEnd && ayahEnd < ayahStart) {
+      return 'Ayat akhir tidak boleh lebih kecil dari ayat awal.';
+    }
+    if ((pageStart == null) != (pageEnd == null)) {
+      return 'Halaman awal dan akhir harus diisi bersama.';
+    }
+    if (pageStart != null && pageEnd! < pageStart) {
+      return 'Halaman akhir tidak boleh lebih kecil dari halaman awal.';
+    }
+    return null;
+  }
+}
+
+class QuranBarcodeSubmission {
+  const QuranBarcodeSubmission({
+    required this.flowId,
+    required this.surahStart,
+    required this.ayahStart,
+    required this.surahEnd,
+    required this.ayahEnd,
+    this.pageStart,
+    this.pageEnd,
+    this.notes,
+  });
+
+  final String flowId;
+  final int surahStart;
+  final int ayahStart;
+  final int surahEnd;
+  final int ayahEnd;
+  final int? pageStart;
+  final int? pageEnd;
+  final String? notes;
+
+  Map<String, dynamic> toJson() => {
+        'flow_id': flowId,
+        'surah_start': surahStart,
+        'ayah_start': ayahStart,
+        'surah_end': surahEnd,
+        'ayah_end': ayahEnd,
+        'page_start': ?pageStart,
+        'page_end': ?pageEnd,
+        if (notes != null && notes!.trim().isNotEmpty) 'notes': notes!.trim(),
+      };
+}
+
 /// Model tracer bacaan Al-Quran.
 ///
 /// Diverifikasi dari respons nyata `GET /api/v1/quran/entries`,
@@ -97,7 +218,9 @@ class QuranEntry {
         source: '${json['source'] ?? 'manual'}',
         status: '${json['status'] ?? 'pending'}',
         isVerified: json['is_verified'] == true,
-        verifiedAt: DateTime.tryParse('${json['verified_at']}'),
+        // Timestamp (bukan tanggal polos) → dikonversi ke zona lokal perangkat
+        // supaya jamnya tidak tampil geser dari yang tercatat di server.
+        verifiedAt: DateTime.tryParse('${json['verified_at']}')?.toLocal(),
         verifiedBy: _str(json['verified_by']),
         verificationNotes: _str(json['verification_notes']),
       );
@@ -135,7 +258,7 @@ class QuranProgress {
         totalHalaman: (json['total_halaman'] as num?)?.toInt() ?? 0,
         totalHalamanTerverifikasi:
             (json['total_halaman_terverifikasi'] as num?)?.toInt() ?? 0,
-        bacaanTerakhir: DateTime.tryParse('${json['bacaan_terakhir']}'),
+        bacaanTerakhir: DateTime.tryParse('${json['bacaan_terakhir']}')?.toLocal(),
         siklus: json['siklus'] is Map
             ? QuranSiklus.fromJson(
                 (json['siklus'] as Map).cast<String, dynamic>())

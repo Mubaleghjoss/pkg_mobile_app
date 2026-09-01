@@ -7,11 +7,12 @@ import '../core/notifications/verifikasi_watcher.dart';
 import '../core/storage/session_store.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/data/auth_repository.dart';
+import '../features/calendar/data/calendar_repository.dart';
 import '../features/dashboard/data/dashboard_repository.dart';
 import '../features/gamifikasi/data/gamifikasi_repository.dart';
 import '../features/game/data/game_repository.dart';
 import '../features/karakter/data/karakter_luhur_repository.dart';
-import '../features/kelas/data/kelas_repository.dart';
+import '../features/kelas/data/binaan_repository.dart';
 import '../features/materi/data/materi_repository.dart';
 import '../features/ortu/data/ortu_repository.dart';
 import '../features/presensi/data/presensi_repository.dart';
@@ -47,12 +48,18 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   );
 });
 
+final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
+  return CalendarRepository(ref.watch(dioProvider));
+});
+
 final siswaRepositoryProvider = Provider<SiswaRepository>((ref) {
   return SiswaRepository(ref.watch(dioProvider));
 });
 
-final kelasRepositoryProvider = Provider<KelasRepository>((ref) {
-  return KelasRepository(ref.watch(dioProvider));
+/// Sumber data AKTIF (Binaan Pamong + Kelas Sekolah) — pengganti `/kelas`
+/// yang ditandai deprecated oleh backend.
+final binaanRepositoryProvider = Provider<BinaanRepository>((ref) {
+  return BinaanRepository(ref.watch(dioProvider));
 });
 
 final presensiRepositoryProvider = Provider<PresensiRepository>((ref) {

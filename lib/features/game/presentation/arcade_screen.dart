@@ -78,7 +78,8 @@ class _ArcadeScreenState extends ConsumerState<ArcadeScreen> {
     if (!result.ok || result.data == null || result.data!.length < 4) {
       setState(() {
         _fase = _Fase.siap;
-        _error = result.error ??
+        _error =
+            result.error ??
             'Kata arcade belum cukup. Minta pamong menambah data karakter.';
       });
       return;
@@ -186,18 +187,16 @@ class _ArcadeScreenState extends ConsumerState<ArcadeScreen> {
     if (_skor <= 0) return;
 
     setState(() => _menyimpan = true);
-    final result = await ref.read(gameRepositoryProvider).simpanSkorArcade(
-          skor: _skor,
-          combo: _comboTerbaik,
-        );
+    final result = await ref
+        .read(gameRepositoryProvider)
+        .simpanSkorArcade(skor: _skor, combo: _comboTerbaik);
     if (!mounted) return;
 
     setState(() {
       _menyimpan = false;
       if (result.ok) {
         _rekorBaru = result.data == true;
-        _hasilSimpan =
-            _rekorBaru ? 'Rekor baru tersimpan.' : 'Skor tersimpan.';
+        _hasilSimpan = _rekorBaru ? 'Rekor baru tersimpan.' : 'Skor tersimpan.';
       } else {
         _hasilSimpan = result.error ?? 'Skor gagal disimpan.';
       }
@@ -224,9 +223,9 @@ class _ArcadeScreenState extends ConsumerState<ArcadeScreen> {
                 child: Text(
                   '$_sisaDetik s',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: _sisaDetik <= 10 ? Colors.red : null,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: _sisaDetik <= 10 ? Colors.red : null,
+                  ),
                 ),
               ),
             ),
@@ -264,9 +263,7 @@ class _ArcadeScreenState extends ConsumerState<ArcadeScreen> {
                       Expanded(
                         child: Text(
                           'Susun kata karakter secepat mungkin',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
+                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
@@ -330,108 +327,116 @@ class _ArcadeScreenState extends ConsumerState<ArcadeScreen> {
     final theme = Theme.of(context);
     final jawaban = _jawaban;
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          AnimatedBar(value: _sisaDetik / _durasiDetik),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  label: 'Skor',
-                  value: '$_skor',
-                  icon: Icons.star_outline,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: StatCard(
-                  label: 'Combo',
-                  value: 'x$_combo',
-                  icon: Icons.bolt_outlined,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Kotak jawaban: satu slot per huruf target.
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (var i = 0; i < _target.length; i++)
-                Container(
-                  width: 34,
-                  height: 42,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: i < jawaban.length
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outlineVariant,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedBar(value: _sisaDetik / _durasiDetik),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: StatCard(
+                        label: 'Skor',
+                        value: '$_skor',
+                        icon: Icons.star_outline,
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    i < jawaban.length ? jawaban[i] : '',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: StatCard(
+                        label: 'Combo',
+                        value: 'x$_combo',
+                        icon: Icons.bolt_outlined,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${_target.length} huruf',
-            style: theme.textTheme.bodySmall,
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (var i = 0; i < _huruf.length; i++)
-                _TombolHuruf(
-                  huruf: _huruf[i],
-                  terpakai: _dipilih.contains(i),
-                  onTap: () => _tapHuruf(i),
+                const SizedBox(height: 20),
+                // Kotak jawaban: satu slot per huruf target.
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (var i = 0; i < _target.length; i++)
+                      Container(
+                        width: 34,
+                        height: 42,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: i < jawaban.length
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Text(
+                          i < jawaban.length ? jawaban[i] : '',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _dipilih.isEmpty ? null : _hapus,
-                  icon: const Icon(Icons.backspace_outlined),
-                  label: const Text('Hapus'),
+                const SizedBox(height: 8),
+                Text(
+                  '${_target.length} huruf',
+                  style: theme.textTheme.bodySmall,
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _lewati,
-                  icon: const Icon(Icons.skip_next_outlined),
-                  label: const Text('Lewati (-3s)'),
+                const SizedBox(height: 20),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (var i = 0; i < _huruf.length; i++)
+                      _TombolHuruf(
+                        huruf: _huruf[i],
+                        terpakai: _dipilih.contains(i),
+                        onTap: () => _tapHuruf(i),
+                      ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _dipilih.isEmpty ? null : _hapus,
+                        icon: const Icon(Icons.backspace_outlined),
+                        label: const Text('Hapus'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _lewati,
+                        icon: const Icon(Icons.skip_next_outlined),
+                        label: const Text('Lewati (-3s)'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _selesai,
+                  icon: const Icon(Icons.stop_circle_outlined),
+                  label: const Text('Akhiri sekarang'),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: _selesai,
-            icon: const Icon(Icons.stop_circle_outlined),
-            label: const Text('Akhiri sekarang'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -562,9 +567,9 @@ class _TombolHuruf extends StatelessWidget {
           child: Text(
             terpakai ? '' : huruf,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: scheme.onPrimaryContainer,
-                ),
+              fontWeight: FontWeight.bold,
+              color: scheme.onPrimaryContainer,
+            ),
           ),
         ),
       ),
@@ -590,17 +595,16 @@ class _PapanSkorRingkas extends ConsumerWidget {
         }
         final teratas = rows.take(5).toList();
         final saya = rows.where((r) => r.isSaya).firstOrNull;
-        final sayaDiLuar =
-            saya != null && !teratas.any((r) => r.isSaya) ? saya : null;
+        final sayaDiLuar = saya != null && !teratas.any((r) => r.isSaya)
+            ? saya
+            : null;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Papan skor',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
+              style: Theme.of(context).textTheme.titleSmall
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),

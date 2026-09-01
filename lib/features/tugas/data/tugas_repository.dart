@@ -53,15 +53,20 @@ class TugasRepository {
   }
 
   /// Riwayat pengerjaan (terpaginasi, termasuk komentar orang tua).
+  ///
+  /// [onlyUnverified] memetakan query `only_unverified` di backend, dipakai
+  /// filter "Belum diverifikasi" pada layar riwayat.
   Future<ApiResult<Paginated<TugasChecklist>>> history({
     int page = 1,
     int perPage = 15,
+    bool onlyUnverified = false,
   }) async {
     try {
       final mapped = ApiResponseMapper.map(
         await _dio.get<dynamic>('/tugas-pkg/history', queryParameters: {
           'page': page,
           'per_page': perPage,
+          if (onlyUnverified) 'only_unverified': 1,
         }),
       );
       if (!mapped.ok) {

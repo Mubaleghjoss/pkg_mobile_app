@@ -128,11 +128,11 @@ class TugasChecklist {
         karakterNama: '${json['karakter_nama'] ?? ''}',
         kategori: json['kategori'] as String?,
         poin: (json['poin'] as num?)?.toInt() ?? 0,
-        checkedAt: DateTime.tryParse('${json['checked_at']}'),
+        checkedAt: DateTime.tryParse('${json['checked_at']}')?.toLocal(),
         hasilTeks: TugasPkg._str(json['hasil_teks']),
         studentNote: TugasPkg._str(json['student_note']),
         isVerified: json['is_verified'] == true,
-        verifiedAt: DateTime.tryParse('${json['verified_at']}'),
+        verifiedAt: DateTime.tryParse('${json['verified_at']}')?.toLocal(),
         verifiedBy: json['verified_by'] as String?,
         notes: TugasPkg._str(json['notes']),
         hasProofPhoto: json['has_proof_photo'] == true,
@@ -154,7 +154,7 @@ class OrtuKomentar {
   factory OrtuKomentar.fromJson(Map<String, dynamic> json) => OrtuKomentar(
         id: (json['id'] as num?)?.toInt() ?? 0,
         comment: '${json['comment'] ?? ''}',
-        createdAt: DateTime.tryParse('${json['created_at']}'),
+        createdAt: DateTime.tryParse('${json['created_at']}')?.toLocal(),
       );
 }
 

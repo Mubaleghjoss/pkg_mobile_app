@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/calendar/presentation/calendar_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/game/presentation/arcade_screen.dart';
 import '../features/game/presentation/game_screen.dart';
@@ -11,7 +12,6 @@ import '../features/gamifikasi/presentation/badge_screen.dart';
 import '../features/gamifikasi/presentation/poin_screen.dart';
 import '../features/karakter/presentation/karakter_reader_screen.dart';
 import '../features/karakter/presentation/karakter_screen.dart';
-import '../features/kelas/presentation/kelas_detail_screen.dart';
 import '../features/kelas/presentation/kelas_screen.dart';
 import '../features/materi/presentation/materi_detail_screen.dart';
 import '../features/materi/presentation/materi_screen.dart';
@@ -22,12 +22,15 @@ import '../features/presensi/presentation/presensi_statistik_screen.dart';
 import '../features/presensi/presentation/scan_qr_screen.dart';
 import '../features/profil/presentation/change_password_screen.dart';
 import '../features/profil/presentation/profil_screen.dart';
+import '../features/quran/presentation/quran_barcode_screen.dart';
 import '../features/quran/presentation/quran_form_screen.dart';
 import '../features/quran/presentation/quran_screen.dart';
 import '../features/siswa/presentation/siswa_detail_screen.dart';
 import '../features/siswa/presentation/siswa_form_screen.dart';
 import '../features/siswa/presentation/siswa_qr_screen.dart';
+import '../features/server_features/presentation/server_features_screen.dart';
 import '../features/siswa/presentation/siswa_screen.dart';
+import '../features/tugas/presentation/tugas_riwayat_screen.dart';
 import '../features/tugas/presentation/tugas_screen.dart';
 import '../features/verifikasi/presentation/verifikasi_screen.dart';
 import '../core/storage/session_store.dart';
@@ -58,8 +61,10 @@ CustomTransitionPage<T> _slidePage<T>({
       return FadeTransition(
         opacity: curved,
         child: SlideTransition(
-          position:
-              Tween<Offset>(begin: begin, end: Offset.zero).animate(curved),
+          position: Tween<Offset>(
+            begin: begin,
+            end: Offset.zero,
+          ).animate(curved),
           child: child,
         ),
       );
@@ -71,17 +76,14 @@ CustomTransitionPage<T> _slidePage<T>({
 CustomTransitionPage<T> _sheetPage<T>({
   required Widget child,
   required GoRouterState state,
-}) =>
-    _slidePage<T>(child: child, state: state, begin: const Offset(0, 0.10));
+}) => _slidePage<T>(child: child, state: state, begin: const Offset(0, 0.10));
 
 /// Router aplikasi.
 ///
 /// Redirect memakai [AuthState]: selama status `unknown` tampilkan splash,
 /// `unauthenticated` paksa ke /login, `authenticated` blokir akses /login.
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = ValueNotifier<AuthState>(
-    ref.read(authControllerProvider),
-  );
+  final notifier = ValueNotifier<AuthState>(ref.read(authControllerProvider));
   ref.listen<AuthState>(
     authControllerProvider,
     (_, next) => notifier.value = next,
@@ -151,13 +153,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/kelas/:id',
-        pageBuilder: (_, state) => _slidePage(
-          state: state,
-          child: KelasDetailScreen(id: _idOf(state)),
-        ),
-      ),
-      GoRoute(
         path: '/presensi/baru',
         pageBuilder: (_, state) =>
             _sheetPage(child: const PresensiFormScreen(), state: state),
@@ -189,14 +184,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) =>
             _sheetPage(child: const ChangePasswordScreen(), state: state),
       ),
+      GoRoute(
+        path: '/fitur-server',
+        pageBuilder: (_, state) =>
+            _slidePage(child: const ServerFeaturesScreen(), state: state),
+      ),
       // Pembaca materi 29 karakter (halaman penuh, di luar shell).
       GoRoute(
         path: '/karakter/:slug',
         pageBuilder: (_, state) => _slidePage(
           state: state,
-          child: KarakterReaderScreen(
-            slug: state.pathParameters['slug'] ?? '',
-          ),
+          child: KarakterReaderScreen(slug: state.pathParameters['slug'] ?? ''),
         ),
       ),
       GoRoute(
@@ -210,6 +208,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/quran/baru',
         pageBuilder: (_, state) =>
             _sheetPage(child: const QuranFormScreen(), state: state),
+      ),
+      GoRoute(
+        path: '/quran/tracer',
+        pageBuilder: (_, state) =>
+            _sheetPage(child: const QuranBarcodeScreen(), state: state),
       ),
       // Gamifikasi & game: Scaffold + AppBar sendiri, jadi di luar ShellRoute.
       GoRoute(
@@ -232,6 +235,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) =>
             _slidePage(child: const BadgeScreen(), state: state),
       ),
+      // Riwayat tugas PKG (siswa & ortu) — Scaffold sendiri, di luar shell.
+      GoRoute(
+        path: '/tugas/riwayat',
+        pageBuilder: (_, state) =>
+            _slidePage(child: const TugasRiwayatScreen(), state: state),
+      ),
       ShellRoute(
         builder: (context, state, child) =>
             HomeShell(state: state, child: child),
@@ -242,6 +251,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/kelas', builder: (_, _) => const KelasScreen()),
           GoRoute(path: '/karakter', builder: (_, _) => const KarakterScreen()),
           GoRoute(path: '/materi', builder: (_, _) => const MateriScreen()),
+          GoRoute(path: '/kalender', builder: (_, _) => const CalendarScreen()),
           GoRoute(path: '/tugas', builder: (_, _) => const TugasScreen()),
           GoRoute(path: '/quran', builder: (_, _) => const QuranScreen()),
           // Pamong/admin: antrean verifikasi tugas PKG siswa binaan.
@@ -294,17 +304,16 @@ class _PkgSplashScreenState extends State<PkgSplashScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             ScaleTransition(
-              scale: Tween<double>(begin: 0.92, end: 1.04).animate(
-                CurvedAnimation(parent: _c, curve: Curves.easeInOut),
-              ),
+              scale: Tween<double>(
+                begin: 0.92,
+                end: 1.04,
+              ).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut)),
               child: const PkgLogo(size: 132),
             ),
             const SizedBox(height: 28),
             Text(
               'PKGenerus',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
+              style: Theme.of(context).textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
@@ -334,8 +343,23 @@ class HomeShell extends ConsumerStatefulWidget {
   final GoRouterState state;
   final Widget child;
 
-  static const _dashboard =
-      (path: '/', label: 'Dashboard', icon: Icons.dashboard_outlined);
+  static const _dashboard = (
+    path: '/',
+    label: 'Dashboard',
+    icon: Icons.dashboard_outlined,
+  );
+
+  /// Aksi utama berdasarkan rute aktual, termasuk rute dari menu Lainnya.
+  static String? fabActionPathForLocation(String location) =>
+      switch (location) {
+        '/presensi' => '/scan-qr',
+        '/siswa' => '/siswa/baru',
+        _ => null,
+      };
+
+  /// Orang tua hanya dapat memantau progres Quran anaknya.
+  static bool canScanQuranBarcode(AuthActor actor) =>
+      actor == AuthActor.staff || actor == AuthActor.siswa;
 
   /// Tab dibedakan per aktor supaya tiap peran hanya melihat menu yang
   /// endpoint-nya memang boleh dia panggil:
@@ -356,7 +380,7 @@ class HomeShell extends ConsumerStatefulWidget {
           (
             path: '/karakter',
             label: 'Karakter',
-            icon: Icons.auto_stories_outlined
+            icon: Icons.auto_stories_outlined,
           ),
           (path: '/quran', label: 'Quran', icon: Icons.menu_book_outlined),
         ];
@@ -365,18 +389,14 @@ class HomeShell extends ConsumerStatefulWidget {
           (
             path: '/monitoring',
             label: 'Monitoring',
-            icon: Icons.insights_outlined
+            icon: Icons.insights_outlined,
           ),
           (
             path: '/karakter',
             label: 'Karakter',
-            icon: Icons.auto_stories_outlined
+            icon: Icons.auto_stories_outlined,
           ),
-          (
-            path: '/materi',
-            label: 'Materi',
-            icon: Icons.folder_open_outlined
-          ),
+          (path: '/materi', label: 'Materi', icon: Icons.folder_open_outlined),
         ];
       case AuthActor.staff:
         return const [
@@ -384,7 +404,7 @@ class HomeShell extends ConsumerStatefulWidget {
           (
             path: '/verifikasi',
             label: 'Verifikasi',
-            icon: Icons.verified_outlined
+            icon: Icons.verified_outlined,
           ),
           (path: '/siswa', label: 'Siswa', icon: Icons.groups_outlined),
         ];
@@ -397,22 +417,38 @@ class HomeShell extends ConsumerStatefulWidget {
   /// `context.go` dan bilah navigasi tetap terlihat; sisanya halaman penuh
   /// (`context.push`) yang membawa Scaffold sendiri.
   static List<
-      ({
-        String path,
-        String label,
-        IconData icon,
-        String? deskripsi,
-        bool inShell,
-      })> extrasFor(AuthSession? session) {
+    ({
+      String path,
+      String label,
+      IconData icon,
+      String? deskripsi,
+      bool inShell,
+    })
+  >
+  extrasFor(AuthSession? session) {
     switch (session?.actor ?? AuthActor.staff) {
       case AuthActor.siswa:
         return const [
+          (
+            path: '/kalender',
+            label: 'Kalender',
+            icon: Icons.calendar_month_outlined,
+            deskripsi: 'Agenda & kegiatan',
+            inShell: true,
+          ),
           (
             path: '/materi',
             label: 'Materi',
             icon: Icons.folder_open_outlined,
             deskripsi: 'Bahan bacaan',
             inShell: true,
+          ),
+          (
+            path: '/tugas/riwayat',
+            label: 'Riwayat',
+            icon: Icons.history_outlined,
+            deskripsi: 'Pengerjaan lampau',
+            inShell: false,
           ),
           (
             path: '/poin',
@@ -443,6 +479,13 @@ class HomeShell extends ConsumerStatefulWidget {
             inShell: false,
           ),
           (
+            path: '/fitur-server',
+            label: 'Fitur server',
+            icon: Icons.integration_instructions_outlined,
+            deskripsi: '10 fitur tambahan',
+            inShell: false,
+          ),
+          (
             path: '/profil',
             label: 'Profil',
             icon: Icons.account_circle_outlined,
@@ -453,11 +496,25 @@ class HomeShell extends ConsumerStatefulWidget {
       case AuthActor.ortu:
         return const [
           (
+            path: '/kalender',
+            label: 'Kalender',
+            icon: Icons.calendar_month_outlined,
+            deskripsi: 'Agenda anak',
+            inShell: true,
+          ),
+          (
             path: '/tugas',
             label: 'Tugas anak',
             icon: Icons.checklist_outlined,
             deskripsi: 'Hanya memantau',
             inShell: true,
+          ),
+          (
+            path: '/tugas/riwayat',
+            label: 'Riwayat tugas',
+            icon: Icons.history_outlined,
+            deskripsi: 'Pengerjaan anak',
+            inShell: false,
           ),
           (
             path: '/poin',
@@ -481,6 +538,13 @@ class HomeShell extends ConsumerStatefulWidget {
             inShell: false,
           ),
           (
+            path: '/fitur-server',
+            label: 'Fitur server',
+            icon: Icons.integration_instructions_outlined,
+            deskripsi: '10 fitur tambahan',
+            inShell: false,
+          ),
+          (
             path: '/profil',
             label: 'Profil',
             icon: Icons.account_circle_outlined,
@@ -490,6 +554,20 @@ class HomeShell extends ConsumerStatefulWidget {
         ];
       case AuthActor.staff:
         return const [
+          (
+            path: '/quran/tracer',
+            label: 'Tracer Quran',
+            icon: Icons.qr_code_scanner_outlined,
+            deskripsi: 'Scan lembar binaan',
+            inShell: false,
+          ),
+          (
+            path: '/kalender',
+            label: 'Kalender',
+            icon: Icons.calendar_month_outlined,
+            deskripsi: 'Agenda pembinaan',
+            inShell: true,
+          ),
           (
             path: '/presensi',
             label: 'Presensi',
@@ -526,6 +604,13 @@ class HomeShell extends ConsumerStatefulWidget {
             inShell: false,
           ),
           (
+            path: '/fitur-server',
+            label: 'Fitur server',
+            icon: Icons.integration_instructions_outlined,
+            deskripsi: '10 fitur tambahan',
+            inShell: false,
+          ),
+          (
             path: '/profil',
             label: 'Profil',
             icon: Icons.account_circle_outlined,
@@ -548,14 +633,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       HomeShell.tabsFor(ref.read(authControllerProvider).session);
 
   List<
-      ({
-        String path,
-        String label,
-        IconData icon,
-        String? deskripsi,
-        bool inShell,
-      })> get _extras =>
-      HomeShell.extrasFor(ref.read(authControllerProvider).session);
+    ({
+      String path,
+      String label,
+      IconData icon,
+      String? deskripsi,
+      bool inShell,
+    })
+  >
+  get _extras => HomeShell.extrasFor(ref.read(authControllerProvider).session);
 
   /// Indeks tab utama; -1 bila lokasi sekarang berasal dari menu "Lainnya".
   int get _tabIndex =>
@@ -583,8 +669,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   void didUpdateWidget(covariant HomeShell oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final old =
-        _tabs.indexWhere((t) => t.path == oldWidget.state.matchedLocation);
+    final old = _tabs.indexWhere(
+      (t) => t.path == oldWidget.state.matchedLocation,
+    );
     if (old >= 0 && old != _index) _previousIndex = old;
   }
 
@@ -660,8 +747,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position:
-                  Tween<Offset>(begin: begin, end: Offset.zero).animate(
+              position: Tween<Offset>(begin: begin, end: Offset.zero).animate(
                 CurvedAnimation(parent: animation, curve: PkgMotion.curve),
               ),
               child: child,
@@ -685,17 +771,17 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ],
       ),
       body: SafeArea(child: body),
-      floatingActionButton: _fabFor(_index, auth),
+      floatingActionButton: _fabFor(auth),
       bottomNavigationBar: wide
           ? null
           : NavigationBar(
               selectedIndex: _selectedSlot,
               onDestinationSelected: _onSlotSelected,
               destinations: [
-                ..._tabs.map((t) => NavigationDestination(
-                      icon: Icon(t.icon),
-                      label: t.label,
-                    )),
+                ..._tabs.map(
+                  (t) =>
+                      NavigationDestination(icon: Icon(t.icon), label: t.label),
+                ),
                 // Slot terakhir: pembuka panel menu mengambang.
                 const NavigationDestination(
                   icon: Icon(Icons.apps_outlined),
@@ -719,10 +805,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           ),
           labelType: NavigationRailLabelType.all,
           destinations: [
-            ..._tabs.map((t) => NavigationRailDestination(
-                  icon: Icon(t.icon),
-                  label: Text(t.label),
-                )),
+            ..._tabs.map(
+              (t) => NavigationRailDestination(
+                icon: Icon(t.icon),
+                label: Text(t.label),
+              ),
+            ),
             const NavigationRailDestination(
               icon: Icon(Icons.apps_outlined),
               selectedIcon: Icon(Icons.apps),
@@ -736,22 +824,25 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     );
   }
 
-  /// FAB kontekstual per tab. Aksi tulis digerbangi permission dari `/me`.
-  Widget? _fabFor(int index, AuthState auth) {
-    final path = _tabs[index].path;
-    if (path == '/presensi') {
+  /// FAB kontekstual berdasarkan rute aktual. Aksi tulis digerbangi
+  /// permission dari `/me`.
+  Widget? _fabFor(AuthState auth) {
+    final action = HomeShell.fabActionPathForLocation(
+      widget.state.matchedLocation,
+    );
+    if (action == '/scan-qr') {
       // Scan QR: endpoint publik di backend, jadi tidak digerbangi permission.
       return FloatingActionButton.extended(
         heroTag: 'fab-scan',
-        onPressed: () => context.push('/scan-qr'),
+        onPressed: () => context.push(action!),
         icon: const Icon(Icons.qr_code_scanner),
         label: const Text('Scan QR'),
       );
     }
-    if (path == '/siswa' && auth.can('manage_students')) {
+    if (action == '/siswa/baru' && auth.can('manage_students')) {
       return FloatingActionButton.extended(
         heroTag: 'fab-siswa',
-        onPressed: () => context.push('/siswa/baru'),
+        onPressed: () => context.push(action!),
         icon: const Icon(Icons.person_add_alt),
         label: const Text('Siswa baru'),
       );

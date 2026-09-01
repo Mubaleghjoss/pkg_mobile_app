@@ -67,8 +67,9 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
         terverifikasi.add((id: c.id, nama: t.nama));
       }
     }
-    if (terverifikasi.isEmpty) return;
-
+    // Daftar kosong tetap dikirim: VerifikasiWatcher memakainya untuk menetapkan
+    // garis dasar, supaya verifikasi pertama yang datang nanti tidak dianggap
+    // riwayat lama dan ikut ditelan.
     final kunci = '${data.meta.date}|'
         '${terverifikasi.map((e) => e.id).join(',')}';
     if (_terakhirDiperiksa == kunci) return;
@@ -120,6 +121,45 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
         SnackBar(content: Text('"${t.nama}" tercatat. +${t.poin} poin')),
       );
     }
+  }
+
+  /// Komentar orang tua pada satu pengerjaan.
+  ///
+  /// Backend hanya menerima ini dari token ortu (`POST
+  /// /tugas-pkg/checklist/{id}/comment`), jadi tombolnya pun hanya muncul di
+  /// mode ortu dan hanya untuk tugas yang sudah dikerjakan (checklist ada).
+  Future<void> _komentari(TugasPkg t) async {
+    final checklistId = t.checklist?.id;
+    if (checklistId == null || checklistId <= 0) return;
+
+    final teks = await tanyaTeksDialog(
+      context,
+      judul: 'Komentar untuk "${t.nama}"',
+      pesan: 'Komentar akan terlihat oleh anak dan pamong.',
+      labelField: 'Tulis komentar',
+      tombol: 'Kirim',
+      maxLines: 4,
+      maxLength: 500,
+      autofocus: true,
+    );
+    if (teks == null || teks.trim().isEmpty) return;
+
+    setState(() => _mengirim = t.id);
+    final result =
+        await ref.read(tugasRepositoryProvider).comment(checklistId, teks);
+    if (!mounted) return;
+    setState(() => _mengirim = null);
+
+    if (!result.ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.error ?? 'Gagal mengirim komentar')),
+      );
+      return;
+    }
+    ref.invalidate(tugasHarianProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Komentar terkirim')),
+    );
   }
 
   Future<String?> _tanyaTeks(TugasPkg t) async {
@@ -258,8 +298,10 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
                     child: _TugasCard(
                       tugas: t,
                       readOnly: meta.readOnly,
+                      isOrtu: isOrtu,
                       mengirim: _mengirim == t.id,
                       onKerjakan: () => _kerjakan(t, meta),
+                      onKomentar: () => _komentari(t),
                     ),
                   ),
                 );
@@ -287,14 +329,18 @@ class _TugasCard extends StatelessWidget {
   const _TugasCard({
     required this.tugas,
     required this.readOnly,
+    required this.isOrtu,
     required this.mengirim,
     required this.onKerjakan,
+    required this.onKomentar,
   });
 
   final TugasPkg tugas;
   final bool readOnly;
+  final bool isOrtu;
   final bool mengirim;
   final VoidCallback onKerjakan;
+  final VoidCallback onKomentar;
 
   @override
   Widget build(BuildContext context) {
@@ -436,6 +482,25 @@ class _TugasCard extends StatelessWidget {
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
+              ),
+            ],
+            // Komentar hanya boleh dikirim akun ortu, dan hanya jika sudah ada
+            // baris checklist di server (id > 0) — tanpa itu endpoint 404.
+            if (isOrtu && (tugas.checklist?.id ?? 0) > 0) ...[
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: mengirim ? null : onKomentar,
+                  icon: mengirim
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_comment_outlined, size: 18),
+                  label: const Text('Beri komentar'),
+                ),
               ),
             ],
           ],

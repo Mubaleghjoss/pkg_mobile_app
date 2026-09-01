@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
@@ -46,6 +47,7 @@ class QuranScreen extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
     final isOrtu = auth.session?.actor == AuthActor.ortu;
+    final isSiswa = auth.session?.actor == AuthActor.siswa;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -137,13 +139,30 @@ class QuranScreen extends ConsumerWidget {
                 color: theme.colorScheme.surfaceContainerHighest,
                 child: Padding(
                   padding: const EdgeInsets.all(14),
-                  child: Text(
-                    isOrtu
-                        ? 'Mode orang tua: memantau bacaan anak. Entri baru '
-                            'dicatat oleh siswa.'
-                        : 'Catat bacaan harianmu lewat tombol + . Pemindaian '
-                            'lembar barcode tetap dilakukan pamong di web.',
-                    style: theme.textTheme.bodySmall,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isOrtu
+                            ? 'Mode orang tua: memantau bacaan anak. Entri baru '
+                                'dicatat oleh siswa atau pamong.'
+                            : isSiswa
+                                ? 'Catat bacaan manual atau scan QR lembar '
+                                    'tracer milikmu. Hasil scan menunggu '
+                                    'verifikasi pamong.'
+                                : 'Scan QR lembar siswa binaan untuk mencatat '
+                                    'bacaan terverifikasi.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      if (isSiswa) ...[
+                        const SizedBox(height: 10),
+                        FilledButton.tonalIcon(
+                          onPressed: () => context.push('/quran/tracer'),
+                          icon: const Icon(Icons.qr_code_scanner_outlined),
+                          label: const Text('Scan lembar'),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

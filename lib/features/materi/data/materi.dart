@@ -71,14 +71,26 @@ class Materi {
 }
 
 class MateriFolder {
-  const MateriFolder({required this.id, required this.name});
+  const MateriFolder({
+    required this.id,
+    required this.name,
+    this.materiCount,
+    this.parentId,
+  });
 
   final int id;
   final String name;
 
+  /// Jumlah materi di folder ini. Hanya dikirim `GET /materi/folders`;
+  /// folder yang menempel pada satu materi (`materi.folder`) tidak membawanya.
+  final int? materiCount;
+  final int? parentId;
+
   factory MateriFolder.fromJson(Map<String, dynamic> json) => MateriFolder(
         id: (json['id'] as num?)?.toInt() ?? 0,
         name: '${json['name'] ?? json['nama'] ?? 'Tanpa folder'}',
+        materiCount: (json['materi_count'] as num?)?.toInt(),
+        parentId: (json['parent_id'] as num?)?.toInt(),
       );
 }
 

@@ -262,7 +262,9 @@ class PresensiStatistikScreen extends ConsumerWidget {
         .fold<int>(0, (a, b) => a > b ? a : b);
 
     // Kunci status untuk mewarnai bar sama seperti ikon di daftar presensi.
-    const keys = ['hadir', 'terlambat', 'izin', 'sakit', 'alpha', 'tidak_hadir'];
+    // Urutannya harus mengikuti PresensiStatistics.breakdown (baris terakhir
+    // menggabungkan tidak_hadir/alpha karena backend mengirimnya sebagai alias).
+    const keys = ['hadir', 'terlambat', 'izin', 'sakit', 'tidak_hadir'];
 
     return [
       for (var i = 0; i < stat.breakdown.length; i++)
