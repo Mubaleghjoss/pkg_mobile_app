@@ -29,6 +29,7 @@ dependencies:
   package_info_plus: ^10.2.1
   flutter_svg: ^2.3.0
   flutter_local_notifications: 19.4.2
+  webview_flutter: ^4.14.1
 
 dev_dependencies:
   flutter_test:

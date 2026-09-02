@@ -8,12 +8,14 @@ import '../../../shared/widgets/celebration.dart';
 import '../../../shared/widgets/state_widgets.dart';
 import '../data/materi.dart';
 import 'materi_screen.dart';
+import 'materi_video_player.dart';
 
-/// Detail materi: deskripsi, lampiran PDF, dan tautan video.
+/// Detail materi: deskripsi, lampiran PDF, dan video yang langsung diputar.
 ///
-/// Lampiran tidak dibuka in-app (tidak ada pembaca PDF/pemutar video bawaan);
-/// tautannya disalin ke papan klip supaya bisa dibuka di browser. Ini menjaga
-/// app bebas dependensi berat dan tidak mengklaim fitur yang belum ada.
+/// Video memakai `videos[].embed_url` dari backend (YouTube `/embed/{id}`,
+/// Google Drive `/preview`) dan dirender `WebViewWidget`, jadi bisa ditonton
+/// tanpa keluar aplikasi. Dokumen PDF masih disalin ke papan klip karena app
+/// belum punya pembaca PDF bawaan.
 class MateriDetailScreen extends ConsumerStatefulWidget {
   const MateriDetailScreen({super.key, required this.id});
 
@@ -133,18 +135,51 @@ class _MateriDetailScreenState extends ConsumerState<MateriDetailScreen> {
               _SectionTitle('Video (${m.videos.length})'),
               const SizedBox(height: 8),
               ...m.videos.map(
-                (v) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const Icon(Icons.play_circle_outline),
-                    title: Text(v.source ?? 'Video'),
-                    subtitle: Text(
-                      v.url,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: const Icon(Icons.copy_all_outlined, size: 18),
-                    onTap: () => _buka(v.url, 'video'),
+                (v) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (v.embedUrl != null && v.embedUrl!.isNotEmpty)
+                        MateriVideoPlayer(embedUrl: v.embedUrl!)
+                      else
+                        Card(
+                          margin: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: const Icon(Icons.link_off_outlined),
+                            title: Text(v.source ?? 'Video'),
+                            subtitle: const Text(
+                              'Server tidak mengenali tautan ini sebagai '
+                              'YouTube/Google Drive, jadi belum bisa diputar '
+                              'in-app. Ketuk untuk menyalin tautannya.',
+                            ),
+                            trailing: const Icon(
+                              Icons.copy_all_outlined,
+                              size: 18,
+                            ),
+                            onTap: () => _buka(v.url, 'video'),
+                          ),
+                        ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              v.source ?? 'Video',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Salin tautan',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _buka(v.url, 'video'),
+                            icon: const Icon(Icons.copy_all_outlined, size: 18),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),

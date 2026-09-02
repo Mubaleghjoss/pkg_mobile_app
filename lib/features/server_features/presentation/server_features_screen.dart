@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../application/server_features_providers.dart';
 import '../data/server_features_models.dart';
@@ -86,7 +87,7 @@ class _HeaderCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Aktor: ${meta.actor.isEmpty ? 'akun aktif' : meta.actor} • Cakupan: ${meta.scope.isEmpty ? 'server' : meta.scope}. Angka dan item di bawah dibaca dari endpoint /api/v1/mobile/fitur-server.',
+              'Aktor: ${meta.actor.isEmpty ? 'akun aktif' : meta.actor} • Cakupan: ${meta.scope.isEmpty ? 'server' : meta.scope}. Ketuk kartu untuk membuka fiturnya.',
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: scheme.onPrimaryContainer),
             ),
@@ -108,89 +109,94 @@ class _FeatureCard extends StatelessWidget {
     final theme = Theme.of(context);
     final warna = _warna(fitur.kode);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              backgroundColor: warna.withValues(alpha: 0.14),
-              foregroundColor: warna,
-              child: Icon(_icon(fitur.kode)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '$index. ${fitur.judul}',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/fitur-server/${fitur.kode}'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: warna.withValues(alpha: 0.14),
+                foregroundColor: warna,
+                child: Icon(_icon(fitur.kode)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '$index. ${fitur.judul}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Chip(
-                        label: Text('${fitur.total}'),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(fitur.ringkasan),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(
-                        avatar: const Icon(Icons.storage_outlined, size: 16),
-                        label: Text(fitur.endpoint),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      Chip(
-                        avatar: const Icon(
-                          Icons.check_circle_outline,
-                          size: 16,
+                        const SizedBox(width: 8),
+                        Chip(
+                          label: Text('${fitur.total}'),
+                          visualDensity: VisualDensity.compact,
                         ),
-                        label: Text(fitur.status),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                  if (fitur.items.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    for (final item in fitur.items.take(3))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('• '),
-                            Expanded(
-                              child: Text(
-                                '${item.judul}${item.deskripsi == null || item.deskripsi!.isEmpty ? '' : ' — ${item.deskripsi}'}',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ] else ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Belum ada data pada cakupan akun ini.',
-                      style: theme.textTheme.bodySmall,
+                      ],
                     ),
+                    const SizedBox(height: 6),
+                    Text(fitur.ringkasan),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          avatar: const Icon(Icons.touch_app_outlined, size: 16),
+                          label: const Text('Buka fitur'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        Chip(
+                          avatar: const Icon(
+                            Icons.check_circle_outline,
+                            size: 16,
+                          ),
+                          label: Text(fitur.status),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                    if (fitur.items.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      for (final item in fitur.items.take(3))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• '),
+                              Expanded(
+                                child: Text(
+                                  '${item.judul}${item.deskripsi == null || item.deskripsi!.isEmpty ? '' : ' — ${item.deskripsi}'}',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ] else ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Belum ada data pada cakupan akun ini.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+              const Icon(Icons.chevron_right),
+            ],
+          ),
         ),
       ),
     );

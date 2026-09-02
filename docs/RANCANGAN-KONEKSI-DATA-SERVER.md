@@ -1,12 +1,44 @@
 # Rancangan Koneksi App Mobile ke Data Server
 
-Dokumen ini menjawab dua pertanyaan:
+Dokumen ini menjawab tiga pertanyaan:
 
-1. Kalau app Flutter ini dihubungkan ke data server (produksi), apa bisa?
-2. Apa ada yang harus disesuaikan di sisi data server?
+1. App Flutter dan backend Laravel berada di **repository GitHub yang berbeda** — apa bisa terhubung?
+2. Kalau app ini dihubungkan ke data server (produksi), apa bisa?
+3. Apa ada yang harus disesuaikan di sisi data server?
 
 Semua pernyataan di bawah berasal dari pembacaan kode nyata di `E:/hermes/pkgenerus_app`
 dan `E:/hermes/pkgenerus`, bukan asumsi. Yang belum terverifikasi ditandai eksplisit.
+
+---
+
+## 0. Beda repository: bisa, dan justru disengaja
+
+Dua repo terpisah:
+
+| Bagian | Repository | Branch |
+|---|---|---|
+| App Flutter | `Mubaleghjoss/pkg_mobile_app` | `main` |
+| Backend Laravel | `Mubaleghjoss/pembinaan-karakter-generus` | `main` |
+
+Ini tidak menghalangi apa pun, karena **keduanya tidak pernah berbagi satu baris kode**.
+Satu-satunya titik temu adalah kontrak HTTP: app mengirim request ke `<base>/api/v1/...`
+dan membaca JSON. Tidak ada shared library, tidak ada import lintas repo, tidak ada
+submodule, tidak ada build yang bergantung pada repo sebelah.
+
+Konsekuensi praktis yang perlu disadari:
+
+- **Deploy terpisah.** Backend di-deploy ke hosting (lihat prosedur `git pull --ff-only`
+  di server), app dibangun jadi APK. Tidak ada urutan wajib selain: kalau API berubah
+  tak kompatibel, backend harus naik lebih dulu.
+- **Kompatibilitas jadi tanggung jawab manual.** Tidak ada compiler yang memberi tahu
+  saat field JSON dihapus. Karena itu perubahan API sebaiknya aditif (menambah field,
+  bukan mengganti nama), dan endpoint yang dipakai app didokumentasikan di tabel bagian 2.
+- **Versi tidak perlu sinkron.** APK lama tetap jalan selama endpoint yang dipakainya
+  masih ada.
+
+Monorepo/submodule tidak dianjurkan di sini: siklus rilis keduanya berbeda (backend bisa
+di-deploy harian, APK tidak), dan menggabungkannya hanya menambah beban tanpa manfaat
+teknis.
 
 ---
 
@@ -71,6 +103,31 @@ Server memakai Sanctum bearer token dengan masa berlaku 7 hari
 (`config/sanctum.php`: `SANCTUM_TOKEN_EXPIRATION` default 10080 menit).
 App menyimpan token dan me-refresh proaktif bila sisa umur < 1 hari
 (`ApiConfig.refreshThreshold`). Jadi tidak ada perubahan alur login yang dibutuhkan.
+
+### Halaman web server bisa dibuka di dalam app tanpa login ulang
+
+Sebagian fitur server hanya punya halaman web Blade (chat, WebAuthn, laporan penyaksian),
+tanpa endpoint API. Masalahnya halaman itu memakai guard **sesi**, sementara app hanya
+memegang **bearer token** — WebView polos akan selalu berhenti di form login.
+
+Jembatannya `MobileWebBridgeController`:
+
+    POST api/v1/mobile/web-bridge   { "target": "siswa.chat" }   (Authorization: Bearer ...)
+    -> { "url": "<base>/mobile-bridge/<token>" }
+
+WebView membuka URL itu, server menukar token jadi sesi web, lalu redirect ke halaman asli.
+Batasan yang sudah ada di kode dan wajib dipertahankan saat pindah ke produksi:
+
+- token **sekali pakai**, umur **120 detik**, disimpan sebagai **hash SHA-256**;
+- guard yang dipakai mengikuti tipe akun (`siswa` / `ortu` / `web`);
+- target dibatasi **allowlist** `webTargets()` — bukan open redirect.
+
+Verifikasi nyata (curl ke backend lokal): tanpa auth `401`, target di luar cakupan aktor
+`403`, token dipakai dua kali `410`, jalur normal `302` lalu `200` halaman asli tanpa form
+login. Di emulator, WebView menampilkan halaman chat dalam keadaan sudah login.
+
+Implikasi produksi: karena bridge menitipkan sesi lewat URL, HTTPS jadi makin wajib
+(bagian 4.1), dan `SESSION_DOMAIN` harus benar supaya cookie sesi diterima WebView.
 
 ---
 
@@ -177,13 +234,34 @@ Yang perlu dipastikan sebelum produksi:
 5. Tambahkan FCM bila push realtime memang diinginkan.
 6. Tambahkan tabel sertifikat bila fitur sertifikat/reward mau dipakai.
 
+### Urutan rilis dua repo
+
+Karena repo terpisah, urutannya selalu **backend dulu, app kemudian**:
+
+1. Commit + push backend (`pembinaan-karakter-generus`), lalu deploy ke server.
+2. Pastikan endpoint baru hidup di produksi — cek cepat:
+
+       curl -s -o /dev/null -w '%{http_code}' https://<domain>/api/v1/mobile/fitur-server
+
+   (`401` sudah cukup membuktikan rute ada dan terlindungi auth; `404` berarti belum naik.)
+3. Baru build APK dengan `--dart-define=PKG_API_BASE=https://<domain>` dan sebarkan.
+
+Kalau urutannya dibalik, pengguna APK baru akan menemui `404` pada fitur yang backend-nya
+belum ada.
+
 ---
 
 ## 6. Catatan kejujuran
 
 - Angka 74 rute `api/v1` dan daftar endpoint di atas berasal dari `route:list` nyata.
 - Perbaikan `DATE_FORMAT` sudah dijalankan dan test terkait lulus.
+- Jembatan web (`/api/v1/mobile/web-bridge`) sudah diuji nyata: `401` tanpa auth, `403`
+  lintas aktor, `410` saat token dipakai ulang, `302` lalu `200` halaman asli tanpa form
+  login; di emulator Android WebView memuat halaman chat dalam keadaan sudah login.
 - Belum ada pengujian app melawan server produksi. Semua verifikasi sejauh ini melawan
   backend lokal (`artisan serve` port 8010) dan MariaDB lokal port 3307.
 - Klaim "bisa dihubungkan" adalah kesimpulan arsitektural dari kode, bukan hasil uji
   end-to-end ke produksi.
+- Cleartext HTTP hanya diizinkan di build **debug** (`android/app/src/debug/`), dibatasi ke
+  `10.0.2.2`, `localhost`, `127.0.0.1`, dan IP LAN uji. Build release tidak menyentuh berkas
+  itu, sehingga produksi tetap wajib HTTPS.

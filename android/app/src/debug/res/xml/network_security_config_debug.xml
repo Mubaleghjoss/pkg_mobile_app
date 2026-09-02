@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Konfigurasi keamanan jaringan khusus build DEBUG.
+
+  Trafik HTTP polos hanya diizinkan ke alamat pengembangan lokal:
+  10.0.2.2 (alias host laptop dari emulator Android), localhost / 127.0.0.1
+  (port-forward adb), dan 10.181.170.50 (IP LAN laptop saat artisan serve
+  dijalankan dengan host 0.0.0.0 pada port 8010).
+
+  Domain lain (termasuk produksi) tetap wajib HTTPS, dan build release tidak
+  memakai berkas ini sama sekali.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.181.170.50</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

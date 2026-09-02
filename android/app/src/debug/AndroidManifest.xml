@@ -4,4 +4,16 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- HANYA build debug. Sejak Android 9 (API 28) trafik HTTP polos diblokir
+         secara bawaan, sehingga `php artisan serve` di laptop
+         (http://<IP-LAN>:8010) tidak bisa diakses: API v1 lewat Dio maupun
+         halaman server di WebView akan gagal.
+
+         Dibatasi ke alamat pengembangan lokal saja lewat
+         res/xml/network_security_config_debug.xml — build release TIDAK
+         mendapat izin ini, jadi produksi tetap wajib HTTPS. -->
+    <application
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config_debug"/>
 </manifest>

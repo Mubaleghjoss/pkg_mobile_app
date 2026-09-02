@@ -20,6 +20,18 @@ final serverFeaturesProvider = FutureProvider<ServerFeaturesDashboard>((
   return result.data!;
 });
 
+/// Detail satu fitur server (item + daftar aksi yang bisa dibuka).
+final serverFeatureDetailProvider =
+    FutureProvider.family<ServerFeature, String>((ref, kode) async {
+      final result = await ref
+          .watch(serverFeaturesRepositoryProvider)
+          .detail(kode);
+      if (!result.ok || result.data == null) {
+        throw Exception(result.error ?? 'Gagal memuat detail fitur');
+      }
+      return result.data!;
+    });
+
 ProviderContainer createServerFeaturesTestContainer({
   required ServerFeaturesRepository repository,
 }) {

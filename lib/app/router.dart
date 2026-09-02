@@ -28,15 +28,18 @@ import '../features/quran/presentation/quran_screen.dart';
 import '../features/siswa/presentation/siswa_detail_screen.dart';
 import '../features/siswa/presentation/siswa_form_screen.dart';
 import '../features/siswa/presentation/siswa_qr_screen.dart';
+import '../features/server_features/presentation/server_feature_detail_screen.dart';
 import '../features/server_features/presentation/server_features_screen.dart';
 import '../features/siswa/presentation/siswa_screen.dart';
 import '../features/tugas/presentation/tugas_riwayat_screen.dart';
 import '../features/tugas/presentation/tugas_screen.dart';
 import '../features/verifikasi/presentation/verifikasi_screen.dart';
+import '../core/api_config.dart';
 import '../core/storage/session_store.dart';
 import '../shared/widgets/animations.dart';
 import '../shared/widgets/floating_menu.dart';
 import '../shared/widgets/pkg_logo.dart';
+import '../shared/widgets/web_page_screen.dart';
 
 /// Halaman dengan transisi geser+fade dari kanan (Material 3 style).
 ///
@@ -188,6 +191,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/fitur-server',
         pageBuilder: (_, state) =>
             _slidePage(child: const ServerFeaturesScreen(), state: state),
+      ),
+      // Detail satu fitur server: daftar aksi yang benar-benar membuka fitur
+      // (layar aplikasi, halaman web ber-sesi, atau halaman web publik).
+      GoRoute(
+        path: '/fitur-server/:kode',
+        pageBuilder: (_, state) => _slidePage(
+          state: state,
+          child: ServerFeatureDetailScreen(
+            kode: state.pathParameters['kode'] ?? '',
+          ),
+        ),
+      ),
+      // Game Petualangan 29 Karakter. Server hanya menyediakan halaman web
+      // (`/game-29-karakter`, publik tanpa login) — tidak ada endpoint API v1
+      // untuk RPG — jadi dibuka sebagai WebView in-app.
+      GoRoute(
+        path: '/petualangan',
+        pageBuilder: (_, state) => _slidePage(
+          state: state,
+          child: WebPageScreen(
+            title: 'Petualangan',
+            subtitle: '/game-29-karakter',
+            url: ApiConfig.webUrl('/game-29-karakter'),
+          ),
+        ),
       ),
       // Pembaca materi 29 karakter (halaman penuh, di luar shell).
       GoRoute(
@@ -363,9 +391,13 @@ class HomeShell extends ConsumerStatefulWidget {
 
   /// Tab dibedakan per aktor supaya tiap peran hanya melihat menu yang
   /// endpoint-nya memang boleh dia panggil:
-  /// - siswa  : tugas PKG, materi/karakter, tracer Quran
+  /// - siswa  : tugas PKG, materi, karakter, tracer Quran
   /// - ortu   : monitoring (read-only) + materi/karakter
-  /// - staff  : data sekolah + antrean verifikasi tugas
+  /// - staff  : data sekolah + antrean verifikasi tugas + materi
+  ///
+  /// Materi sengaja jadi tab utama untuk ketiga aktor (dulu terkubur di panel
+  /// "Lainnya" untuk siswa & staff) karena bahan ajar/bacaan adalah menu yang
+  /// paling sering dibuka.
   ///
   /// Daftar staff sengaja tidak digerbangi permission di sini; layar di
   /// dalamnya sudah menampilkan pesan galat backend bila aksesnya ditolak.
@@ -377,6 +409,7 @@ class HomeShell extends ConsumerStatefulWidget {
         // Tanpa _dashboard: endpoint /dashboard/* khusus staf (403 STAFF_ONLY).
         return const [
           (path: '/tugas', label: 'Tugas', icon: Icons.checklist_outlined),
+          (path: '/materi', label: 'Materi', icon: Icons.folder_open_outlined),
           (
             path: '/karakter',
             label: 'Karakter',
@@ -407,6 +440,7 @@ class HomeShell extends ConsumerStatefulWidget {
             icon: Icons.verified_outlined,
           ),
           (path: '/siswa', label: 'Siswa', icon: Icons.groups_outlined),
+          (path: '/materi', label: 'Materi', icon: Icons.folder_open_outlined),
         ];
     }
   }
@@ -437,11 +471,11 @@ class HomeShell extends ConsumerStatefulWidget {
             inShell: true,
           ),
           (
-            path: '/materi',
-            label: 'Materi',
-            icon: Icons.folder_open_outlined,
-            deskripsi: 'Bahan bacaan',
-            inShell: true,
+            path: '/petualangan',
+            label: 'Petualangan',
+            icon: Icons.explore_outlined,
+            deskripsi: 'Game 29 karakter',
+            inShell: false,
           ),
           (
             path: '/tugas/riwayat',
@@ -538,6 +572,13 @@ class HomeShell extends ConsumerStatefulWidget {
             inShell: false,
           ),
           (
+            path: '/petualangan',
+            label: 'Petualangan',
+            icon: Icons.explore_outlined,
+            deskripsi: 'Game 29 karakter',
+            inShell: false,
+          ),
+          (
             path: '/fitur-server',
             label: 'Fitur server',
             icon: Icons.integration_instructions_outlined,
@@ -590,11 +631,11 @@ class HomeShell extends ConsumerStatefulWidget {
             inShell: true,
           ),
           (
-            path: '/materi',
-            label: 'Materi',
-            icon: Icons.folder_open_outlined,
-            deskripsi: 'Bahan ajar',
-            inShell: true,
+            path: '/petualangan',
+            label: 'Petualangan',
+            icon: Icons.explore_outlined,
+            deskripsi: 'Game 29 karakter',
+            inShell: false,
           ),
           (
             path: '/presensi/statistik',

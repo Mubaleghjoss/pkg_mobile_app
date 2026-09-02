@@ -16,6 +16,17 @@ class ApiConfig {
 
   static String get apiV1 => '$baseUrl/api/v1';
 
+  /// URL absolut untuk halaman WEB server (bukan API), mis. `/siswa/chat`
+  /// atau `/mobile-bridge/<token>`.
+  ///
+  /// Selalu memakai [baseUrl] aplikasi, bukan `APP_URL` server: alamat yang
+  /// terjangkau perangkat (IP LAN / 10.0.2.2) belum tentu sama dengan yang
+  /// dikonfigurasi di server.
+  static String webUrl(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    return '$baseUrl/${path.replaceFirst(RegExp(r'^/+'), '')}';
+  }
+
   /// Timeout koneksi/terima. Backend lokal cepat, produksi shared hosting lambat.
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 30);

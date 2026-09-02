@@ -98,4 +98,38 @@ class _FakeServerFeaturesRepository implements ServerFeaturesRepository {
       ),
     );
   }
+
+  @override
+  Future<ApiResult<ServerFeature>> detail(String kode, {int limit = 20}) async {
+    return ApiResult.success(
+      ServerFeature(
+        kode: kode,
+        judul: 'Push notification server',
+        ringkasan: 'Token perangkat riil',
+        status: 'tersedia',
+        total: 1,
+        endpoint: '/api/v1/mobile/fitur-server?fitur=$kode',
+        items: const [],
+        aksi: const [
+          ServerFeatureAction(
+            label: 'Pengaturan akun',
+            tipe: ServerFeatureActionType.web,
+            target: '/siswa/profile',
+            butuhSesiWeb: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Future<ApiResult<WebBridgeTicket>> webBridge(String target) async {
+    return ApiResult.success(
+      WebBridgeTicket(
+        path: '/mobile-bridge/${'t' * 64}',
+        target: target,
+        expiresIn: 120,
+      ),
+    );
+  }
 }
