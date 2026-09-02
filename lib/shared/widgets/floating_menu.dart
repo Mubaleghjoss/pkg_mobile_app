@@ -36,7 +36,7 @@ Future<void> showFloatingMenu(
   BuildContext context, {
   required List<FloatingMenuItem> items,
   String judul = 'Menu lainnya',
-  double bottomInset = 88,
+  double? bottomInset,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -81,21 +81,30 @@ class _FloatingMenuPanel extends StatelessWidget {
 
   final String judul;
   final List<FloatingMenuItem> items;
-  final double bottomInset;
+  final double? bottomInset;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final lebar = MediaQuery.sizeOf(context).width;
     final tinggi = MediaQuery.sizeOf(context).height;
+    // Tinggi bilah navigasi aplikasi = tinggi NavigationBar (80 dp default M3)
+    // + viewPadding bawah yang ditambahkan Scaffold untuk bilah sistem
+    // (48 dp pada mode 3 tombol, 24 dp pada mode gesture). Memakai
+    // viewPadding, bukan padding, supaya nilainya tidak menyusut jadi 0
+    // saat papan ketik terbuka.
+    final viewPaddingBawah = MediaQuery.viewPaddingOf(context).bottom;
+    final insetEfektif =
+        bottomInset ??
+        ((NavigationBarTheme.of(context).height ?? 80) + viewPaddingBawah + 8);
     // Dua kolom di ponsel, tiga saat layar cukup lebar.
     final kolom = lebar >= 520 ? 3 : 2;
-    final maxPanelHeight = (tinggi - bottomInset - 24).clamp(160.0, tinggi);
+    final maxPanelHeight = (tinggi - insetEfektif - 24).clamp(160.0, tinggi);
 
     return Align(
       alignment: Alignment.bottomCenter,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(12, 24, 12, bottomInset),
+        padding: EdgeInsets.fromLTRB(12, 24, 12, insetEfektif),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxPanelHeight),
           child: Material(
@@ -103,52 +112,51 @@ class _FloatingMenuPanel extends StatelessWidget {
             elevation: 12,
             borderRadius: BorderRadius.circular(24),
             clipBehavior: Clip.antiAlias,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 38,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: scheme.outlineVariant,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+            // Tidak memakai SafeArea karena insetEfektif sudah mengangkat panel
+            // di atas bilah sistem, agar viewPadding bawah tidak dihitung dua kali.
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: scheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      judul,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    judul,
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: GridView.count(
+                      crossAxisCount: kolom,
+                      shrinkWrap: true,
+                      physics: const ClampingScrollPhysics(),
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.55,
+                      children: [
+                        for (var i = 0; i < items.length; i++)
+                          FadeSlideIn(
+                            index: i,
+                            duration: const Duration(milliseconds: 260),
+                            offset: const Offset(0, 0.14),
+                            child: _MenuKotak(item: items[i]),
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Flexible(
-                      child: GridView.count(
-                        crossAxisCount: kolom,
-                        shrinkWrap: true,
-                        physics: const ClampingScrollPhysics(),
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 1.55,
-                        children: [
-                          for (var i = 0; i < items.length; i++)
-                            FadeSlideIn(
-                              index: i,
-                              duration: const Duration(milliseconds: 260),
-                              offset: const Offset(0, 0.14),
-                              child: _MenuKotak(item: items[i]),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

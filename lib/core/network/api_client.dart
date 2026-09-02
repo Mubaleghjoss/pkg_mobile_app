@@ -19,9 +19,9 @@ class ApiClientFactory {
     required SessionStore sessionStore,
     UnauthorizedCallback? onUnauthorized,
     Dio? dio,
-  })  : _sessionStore = sessionStore,
-        _onUnauthorized = onUnauthorized,
-        dio = dio ?? Dio() {
+  }) : _sessionStore = sessionStore,
+       _onUnauthorized = onUnauthorized,
+       dio = dio ?? Dio() {
     this.dio
       ..options.baseUrl = ApiConfig.apiV1
       ..options.connectTimeout = ApiConfig.connectTimeout
@@ -31,23 +31,23 @@ class ApiClientFactory {
       ..options.validateStatus = (_) => true;
 
     this.dio.interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) async {
-              final session = await _sessionStore.read();
-              if (session != null) {
-                options.headers['Authorization'] = 'Bearer ${session.token}';
-              }
-              handler.next(options);
-            },
-            onResponse: (response, handler) async {
-              if (response.statusCode == 401) {
-                await _sessionStore.clear();
-                await _onUnauthorized?.call();
-              }
-              handler.next(response);
-            },
-          ),
-        );
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final session = await _sessionStore.read();
+          if (session != null) {
+            options.headers['Authorization'] = 'Bearer ${session.token}';
+          }
+          handler.next(options);
+        },
+        onResponse: (response, handler) async {
+          if (response.statusCode == 401) {
+            await _sessionStore.clear();
+            await _onUnauthorized?.call();
+          }
+          handler.next(response);
+        },
+      ),
+    );
   }
 
   final SessionStore _sessionStore;
@@ -81,32 +81,66 @@ class ApiResponseMapper {
     if (error is DioException) {
       final response = error.response;
       if (response != null) return map(response);
-      return ApiResult.failure(
-        switch (error.type) {
-          DioExceptionType.connectionTimeout ||
-          DioExceptionType.sendTimeout ||
-          DioExceptionType.receiveTimeout =>
-            'Koneksi ke server timeout. Periksa jaringan atau alamat server.',
-          DioExceptionType.connectionError =>
-            'Tidak dapat menghubungi server (${ApiConfig.baseUrl}).',
-          _ => error.message ?? 'Kesalahan jaringan.',
-        },
-      );
+      return ApiResult.failure(switch (error.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout =>
+          'Koneksi ke server timeout. Periksa jaringan atau alamat server.',
+        DioExceptionType.connectionError =>
+          'Tidak dapat menghubungi server (${ApiConfig.baseUrl}).',
+        _ => error.message ?? 'Kesalahan jaringan.',
+      });
     }
     return ApiResult.failure('$error');
   }
 
   static String _messageOf(Map<String, dynamic> map, int status) {
+    if (status == 401) return 'NIS atau kata sandi salah.';
+
+    if (status == 422) {
+      final errors = _fieldErrorsOf(map);
+      if (errors != null && errors.isNotEmpty) {
+        return errors.entries
+            .expand(
+              (entry) => entry.value.map(
+                (pesan) => _terjemahkanValidasi(entry.key, pesan),
+              ),
+            )
+            .join(' ');
+      }
+      return 'Data yang dikirim tidak valid.';
+    }
+
     final raw = map['message'] ?? map['error'];
     if (raw is String && raw.isNotEmpty) return raw;
     return switch (status) {
-      401 => 'Sesi berakhir. Silakan masuk kembali.',
       403 => 'Akun Anda tidak punya izin untuk data ini.',
       404 => 'Data tidak ditemukan.',
-      422 => 'Data yang dikirim tidak valid.',
       429 => 'Terlalu banyak percobaan. Coba lagi beberapa saat.',
       _ => 'Server mengembalikan HTTP $status.',
     };
+  }
+
+  static String _terjemahkanValidasi(String field, String pesan) {
+    final label = field
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map(
+          (kata) => kata.toLowerCase() == 'nis'
+              ? 'NIS'
+              : '${kata[0].toUpperCase()}${kata.substring(1)}',
+        )
+        .join(' ');
+    final required = RegExp(
+      r'^The .+ field is required\.?$',
+      caseSensitive: false,
+    );
+    if (required.hasMatch(pesan)) return '$label wajib diisi.';
+    if (pesan.toLowerCase() == 'validation failed') {
+      return '$label tidak valid.';
+    }
+    // Pesan lain tetap diberi nama field agar pengguna tahu input yang salah.
+    return '$label: $pesan';
   }
 
   static Map<String, List<String>>? _fieldErrorsOf(Map<String, dynamic> map) {

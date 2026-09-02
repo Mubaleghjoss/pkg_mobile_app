@@ -32,7 +32,13 @@ class ServerFeaturesScreen extends ConsumerWidget {
         data: (dashboard) => RefreshIndicator(
           onRefresh: () async => ref.refresh(serverFeaturesProvider.future),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            // Tambahkan inset sistem agar kartu terakhir tidak tertutup tombol sistem.
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + MediaQuery.viewPaddingOf(context).bottom,
+            ),
             children: [
               _HeaderCard(meta: dashboard.meta),
               const SizedBox(height: 12),
@@ -153,7 +159,10 @@ class _FeatureCard extends StatelessWidget {
                       runSpacing: 8,
                       children: [
                         Chip(
-                          avatar: const Icon(Icons.touch_app_outlined, size: 16),
+                          avatar: const Icon(
+                            Icons.touch_app_outlined,
+                            size: 16,
+                          ),
                           label: const Text('Buka fitur'),
                           visualDensity: VisualDensity.compact,
                         ),

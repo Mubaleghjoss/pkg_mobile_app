@@ -43,7 +43,13 @@ class ServerFeatureDetailScreen extends ConsumerWidget {
           onRefresh: () async =>
               ref.refresh(serverFeatureDetailProvider(kode).future),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            // Sisakan ruang agar tombol aksi terakhir tidak tertimpa tombol sistem.
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + MediaQuery.viewPaddingOf(context).bottom,
+            ),
             children: [
               Text(
                 fitur.ringkasan,
@@ -67,15 +73,12 @@ class ServerFeatureDetailScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               Text(
                 'Buka fitur',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               if (fitur.aksiTerbuka.isEmpty)
-                const Text(
-                  'Belum ada halaman yang bisa dibuka untuk akun ini.',
-                )
+                const Text('Belum ada halaman yang bisa dibuka untuk akun ini.')
               else
                 for (final aksi in fitur.aksiTerbuka)
                   Padding(
@@ -85,9 +88,8 @@ class ServerFeatureDetailScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               Text(
                 'Data terbaru (${fitur.items.length})',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               if (fitur.items.isEmpty)
@@ -156,9 +158,7 @@ class _ServerFeatureActionTileState
 
     if (!hasil.ok || hasil.data == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(hasil.error ?? 'Gagal membuka halaman server.'),
-        ),
+        SnackBar(content: Text(hasil.error ?? 'Gagal membuka halaman server.')),
       );
       return;
     }
@@ -169,11 +169,8 @@ class _ServerFeatureActionTileState
   void _bukaWeb(String url, String judul) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => WebPageScreen(
-          title: judul,
-          subtitle: widget.aksi.target,
-          url: url,
-        ),
+        builder: (_) =>
+            WebPageScreen(title: judul, subtitle: widget.aksi.target, url: url),
       ),
     );
   }

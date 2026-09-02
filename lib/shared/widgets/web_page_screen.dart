@@ -109,9 +109,14 @@ class _WebPageScreenState extends State<WebPageScreen> {
               )
             : null,
       ),
-      body: _error != null
-          ? _WebError(message: _error!, url: widget.url, onRetry: _reload)
-          : WebViewWidget(controller: _controller),
+      // AppBar sudah menangani sisi atas; lindungi konten web terbawah agar
+      // tidak tertutup tombol sistem.
+      body: SafeArea(
+        top: false,
+        child: _error != null
+            ? _WebError(message: _error!, url: widget.url, onRetry: _reload)
+            : WebViewWidget(controller: _controller),
+      ),
     );
   }
 }

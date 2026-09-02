@@ -733,6 +733,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   Future<void> _bukaMenuLainnya() async {
     final lokasi = widget.state.matchedLocation;
+    // bottomInset dibiarkan null agar dihitung otomatis dari
+    // NavigationBarTheme + viewPadding perangkat.
     await showFloatingMenu(
       context,
       items: [
@@ -833,35 +835,47 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             ),
     );
 
-    if (!wide) return scaffold;
-
-    return Row(
-      children: [
-        NavigationRail(
-          selectedIndex: _selectedSlot,
-          onDestinationSelected: _onSlotSelected,
-          leading: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: PkgLogo(size: 36),
-          ),
-          labelType: NavigationRailLabelType.all,
-          destinations: [
-            ..._tabs.map(
-              (t) => NavigationRailDestination(
-                icon: Icon(t.icon),
-                label: Text(t.label),
+    final shell = wide
+        ? Row(
+            children: [
+              NavigationRail(
+                selectedIndex: _selectedSlot,
+                onDestinationSelected: _onSlotSelected,
+                leading: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: PkgLogo(size: 36),
+                ),
+                labelType: NavigationRailLabelType.all,
+                destinations: [
+                  ..._tabs.map(
+                    (t) => NavigationRailDestination(
+                      icon: Icon(t.icon),
+                      label: Text(t.label),
+                    ),
+                  ),
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.apps_outlined),
+                    selectedIcon: Icon(Icons.apps),
+                    label: Text('Lainnya'),
+                  ),
+                ],
               ),
-            ),
-            const NavigationRailDestination(
-              icon: Icon(Icons.apps_outlined),
-              selectedIcon: Icon(Icons.apps),
-              label: Text('Lainnya'),
-            ),
-          ],
-        ),
-        const VerticalDivider(width: 1),
-        Expanded(child: scaffold),
-      ],
+              const VerticalDivider(width: 1),
+              Expanded(child: scaffold),
+            ],
+          )
+        : scaffold;
+
+    return PopScope(
+      canPop: _tabIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || _tabIndex == 0) return;
+        // `go` tidak menyisakan stack. Back dari tab lain/rute Lainnya harus
+        // kembali ke beranda shell, bukan menyerahkan penutupan ke Android.
+        _previousIndex = 0;
+        context.go(_tabs[0].path);
+      },
+      child: shell,
     );
   }
 
