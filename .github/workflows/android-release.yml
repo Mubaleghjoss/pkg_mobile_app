@@ -64,8 +64,20 @@ jobs:
             fi
           done
           umask 077
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          KEYSTORE_BASE64_PATH="$RUNNER_TEMP/pkgenerus-release.jks.b64"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' > "$KEYSTORE_BASE64_PATH"
+          [[ -s "$KEYSTORE_BASE64_PATH" ]] || { echo '::error::Signing keystore Base64 payload is empty.'; exit 1; }
+          if ! base64 --decode "$KEYSTORE_BASE64_PATH" > "$KEYSTORE_PATH"; then
+            echo '::error::Signing keystore secret is not valid Base64.'
+            exit 1
+          fi
+          rm -f "$KEYSTORE_BASE64_PATH"
           [[ -s "$KEYSTORE_PATH" ]] || { echo '::error::Decoded keystore is empty.'; exit 1; }
+          if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" \
+            -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            echo '::error::Decoded keystore, store password, or key alias is invalid.'
+            exit 1
+          fi
           printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
             "$KEYSTORE_PATH" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" \
             > android/key.properties
@@ -134,7 +146,7 @@ jobs:
       - name: Remove temporary signing files
         if: always()
         shell: bash
-        run: rm -f android/key.properties "$KEYSTORE_PATH"
+        run: rm -f android/key.properties "$KEYSTORE_PATH" "$RUNNER_TEMP/pkgenerus-release.jks.b64"
 
   deploy_production:
     name: Deploy production APK
