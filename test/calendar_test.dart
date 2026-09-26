@@ -77,34 +77,61 @@ void main() {
 
   test('groupCalendarEvents mengelompokkan berdasarkan tanggal lokal', () {
     final events = <CalendarEvent>[
-      CalendarEvent.fromJson(<String, dynamic>{
-        'id': '1',
-        'title': 'A',
-        'start': '2026-09-01T23:30:00Z',
-        'end': null,
-        'all_day': true,
-        'type': 'presensi',
-        'color': '#00AA00',
-        'details': <String, dynamic>{},
-      }),
-      CalendarEvent.fromJson(<String, dynamic>{
-        'id': '2',
-        'title': 'B',
-        'start': '2026-09-02T01:00:00Z',
-        'end': null,
-        'all_day': false,
-        'type': 'tugas',
-        'color': '#AA0000',
-        'details': <String, dynamic>{},
-      }),
+      CalendarEvent(
+        id: '1',
+        title: 'A',
+        start: DateTime(2026, 9, 2, 0, 30),
+        end: null,
+        allDay: true,
+        type: 'presensi',
+        color: '#00AA00',
+        details: const <String, dynamic>{},
+      ),
+      CalendarEvent(
+        id: '2',
+        title: 'B',
+        start: DateTime(2026, 9, 2, 23, 30),
+        end: null,
+        allDay: false,
+        type: 'tugas',
+        color: '#AA0000',
+        details: const <String, dynamic>{},
+      ),
     ];
 
     final grouped = groupCalendarEvents(events);
-    final expectedKey = dateOnly(
-      DateTime.parse('2026-09-01T23:30:00Z').toLocal(),
-    );
 
-    expect(grouped[expectedKey], hasLength(2));
+    expect(grouped[DateTime(2026, 9, 2)], hasLength(2));
+  });
+
+  test('groupCalendarEvents memisahkan event di batas tengah malam lokal', () {
+    final events = <CalendarEvent>[
+      CalendarEvent(
+        id: '1',
+        title: 'Sebelum tengah malam',
+        start: DateTime(2026, 9, 1, 23, 59),
+        end: null,
+        allDay: false,
+        type: 'jadwal',
+        color: '#123456',
+        details: const <String, dynamic>{},
+      ),
+      CalendarEvent(
+        id: '2',
+        title: 'Sesudah tengah malam',
+        start: DateTime(2026, 9, 2),
+        end: null,
+        allDay: false,
+        type: 'jadwal',
+        color: '#123456',
+        details: const <String, dynamic>{},
+      ),
+    ];
+
+    final grouped = groupCalendarEvents(events);
+
+    expect(grouped[DateTime(2026, 9, 1)]!.single.id, '1');
+    expect(grouped[DateTime(2026, 9, 2)]!.single.id, '2');
   });
 
   test(
