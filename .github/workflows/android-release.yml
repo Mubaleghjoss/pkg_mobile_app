@@ -169,11 +169,11 @@ jobs:
       - name: Validate deployment secrets and prepare SSH
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.PKGENERUS_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.PKGENERUS_DEPLOY_USER }}
-          DEPLOY_KEY: ${{ secrets.PKGENERUS_DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS_B64: ${{ secrets.PKGENERUS_DEPLOY_KNOWN_HOSTS }}
-          DEPLOY_PORT: ${{ secrets.PKGENERUS_DEPLOY_PORT }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS_B64: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
           set -euo pipefail
           for name in DEPLOY_HOST DEPLOY_USER DEPLOY_KEY DEPLOY_KNOWN_HOSTS_B64 DEPLOY_PORT; do
@@ -191,9 +191,9 @@ jobs:
       - name: Upload, verify, and atomically publish APK
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.PKGENERUS_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.PKGENERUS_DEPLOY_USER }}
-          DEPLOY_PORT: ${{ secrets.PKGENERUS_DEPLOY_PORT }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           APK_NAME: ${{ needs.build.outputs.apk_name }}
         run: |
           set -euo pipefail

@@ -19,13 +19,13 @@ Required signing secret names:
 
 After artifact review and approval, manually run **Android release APK** from GitHub Actions (`workflow_dispatch`) and explicitly set `deploy_production` to `true`. Deployment is additionally protected by the GitHub `production` environment; configure required reviewers/approval there. Leaving the input false only builds an artifact.
 
-Planned deployment secret names:
+Deployment secret names:
 
-- `PKGENERUS_DEPLOY_HOST`
-- `PKGENERUS_DEPLOY_USER`
-- `PKGENERUS_DEPLOY_SSH_KEY`
-- `PKGENERUS_DEPLOY_KNOWN_HOSTS` (base64-encoded known_hosts content)
-- `PKGENERUS_DEPLOY_PORT`
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+- `DEPLOY_KNOWN_HOSTS` (base64-encoded known_hosts content)
+- `DEPLOY_PORT`
 
 Provision these with approved values; do not guess them. The account must be non-root, host-key verification remains strict, and it needs only the minimum write/rename permissions in:
 
