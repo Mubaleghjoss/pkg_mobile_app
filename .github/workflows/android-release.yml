@@ -74,8 +74,13 @@ jobs:
           rm -f "$KEYSTORE_BASE64_PATH"
           [[ -s "$KEYSTORE_PATH" ]] || { echo '::error::Decoded keystore is empty.'; exit 1; }
           if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" \
+            >/dev/null 2>&1; then
+            echo '::error::Decoded keystore or store password is invalid.'
+            exit 1
+          fi
+          if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" \
             -alias "$KEY_ALIAS" >/dev/null 2>&1; then
-            echo '::error::Decoded keystore, store password, or key alias is invalid.'
+            echo '::error::Key alias is invalid or missing from the decoded keystore.'
             exit 1
           fi
           printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
