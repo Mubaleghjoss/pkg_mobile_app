@@ -49,27 +49,26 @@ jobs:
         id: signing
         shell: bash
         env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+          KEYSTORE_PATH="$RUNNER_TEMP/pkgenerus-release.jks"
+          printf 'KEYSTORE_PATH=%s\n' "$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          for name in ANDROID_KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [[ -z "${!name}" ]]; then
               echo "::error::A required Android signing secret is missing."
               exit 1
             fi
           done
           umask 077
-          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/release-ci.jks
-          [[ -s android/release-ci.jks ]] || { echo '::error::Decoded keystore is empty.'; exit 1; }
-          {
-            printf 'storeFile=release-ci.jks\n'
-            printf 'storePassword=%s\n' "$STORE_PASSWORD"
-            printf 'keyAlias=%s\n' "$KEY_ALIAS"
-            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
-          } > android/key.properties
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          [[ -s "$KEYSTORE_PATH" ]] || { echo '::error::Decoded keystore is empty.'; exit 1; }
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KEYSTORE_PATH" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" \
+            > android/key.properties
 
       - name: Read and validate release metadata
         id: metadata
@@ -135,7 +134,7 @@ jobs:
       - name: Remove temporary signing files
         if: always()
         shell: bash
-        run: rm -f android/key.properties android/release-ci.jks
+        run: rm -f android/key.properties "$KEYSTORE_PATH"
 
   deploy_production:
     name: Deploy production APK
