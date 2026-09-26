@@ -58,7 +58,9 @@ android {
             // Diisi hanya bila android/key.properties tersedia; kalau tidak,
             // biarkan kosong agar `flutter build apk --debug` tetap bisa jalan.
             if (keystoreProperties.isNotEmpty()) {
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                // Resolve relative paths from android/, where key.properties lives;
+                // rootProject.file also preserves absolute storeFile paths.
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
