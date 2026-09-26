@@ -195,25 +195,32 @@ jobs:
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          apk_candidates=(dist/*.apk)
+          echo "Downloaded artifact contents:"
+          find dist -type f -printf '%p (%s bytes)\n' | sort
+
+          mapfile -d '' apk_candidates < <(
+            find dist -type f -name '*.apk' -print0
+          )
 
           if (( ${#apk_candidates[@]} == 0 )); then
-            echo "No APK found in dist/." >&2
+            echo "No APK found in dist/" >&2
             exit 1
           fi
 
-          if (( ${#apk_candidates[@]} != 1 )); then
-            echo "Expected exactly one APK in dist/." >&2
-            printf '%s\n' "${apk_candidates[@]}" >&2
+          if (( ${#apk_candidates[@]} > 1 )); then
+            printf 'Multiple APK files found in dist:\n' >&2
+            printf ' - %s\n' "${apk_candidates[@]}" >&2
             exit 1
           fi
 
           apk="${apk_candidates[0]}"
-          APK_NAME="$(basename -- "$apk")"
 
-          [[ -f "$apk" ]] || { echo "APK is not a regular file." >&2; exit 1; }
-          [[ -s "$apk" ]] || { echo "APK is empty." >&2; exit 1; }
+          if [[ ! -s "$apk" ]]; then
+            echo "APK is empty: $apk" >&2
+            exit 1
+          fi
+
+          APK_NAME="${apk##*/}"
           checksum="$(sha256sum "$apk" | awk '{print $1}')"
           size="$(stat -c '%s' "$apk")"
           remote_dir='/var/www/pkgenerus.my.id/shared/storage/app/private/app-releases'
