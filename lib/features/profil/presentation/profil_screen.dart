@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme_controller.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/pkg_logo.dart';
 import '../../auth/application/auth_controller.dart';
@@ -37,9 +38,7 @@ class ProfilScreen extends ConsumerWidget {
                               children: [
                                 Text(
                                   session.username,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
+                                  style: Theme.of(context).textTheme.titleLarge
                                       ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                                 const SizedBox(height: 4),
@@ -92,10 +91,12 @@ class ProfilScreen extends ConsumerWidget {
                               spacing: 8,
                               runSpacing: 8,
                               children: session.permissions
-                                  .map((p) => Chip(
-                                        label: Text(p),
-                                        visualDensity: VisualDensity.compact,
-                                      ))
+                                  .map(
+                                    (p) => Chip(
+                                      label: Text(p),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  )
                                   .toList(growable: false),
                             ),
                         ],
@@ -109,6 +110,29 @@ class ProfilScreen extends ConsumerWidget {
                   child: Card(
                     child: Column(
                       children: [
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final mode = ref.watch(themeModeProvider);
+                            final isDark = mode == ThemeMode.dark;
+                            return SwitchListTile(
+                              secondary: Icon(
+                                isDark
+                                    ? Icons.dark_mode_outlined
+                                    : Icons.light_mode_outlined,
+                              ),
+                              title: const Text('Mode gelap'),
+                              subtitle: Text(
+                                isDark
+                                    ? 'Tema gelap aktif'
+                                    : 'Tema cerah aktif',
+                              ),
+                              value: isDark,
+                              onChanged: (_) =>
+                                  ref.read(themeModeProvider.notifier).toggle(),
+                            );
+                          },
+                        ),
+                        const Divider(height: 1),
                         ListTile(
                           leading: const Icon(Icons.password_outlined),
                           title: const Text('Ganti password'),
