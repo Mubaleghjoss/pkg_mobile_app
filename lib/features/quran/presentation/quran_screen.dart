@@ -62,7 +62,17 @@ class QuranScreen extends ConsumerWidget {
             subtitle: lastRead == null
                 ? const Text('114 surah tersedia offline')
                 : Text('Surah ${lastRead.surah}, ayat ${lastRead.ayah}'),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: Wrap(
+              spacing: 4,
+              children: [
+                IconButton(
+                  tooltip: 'Buka mushaf Utsmani',
+                  icon: const Icon(Icons.auto_stories_outlined),
+                  onPressed: () => context.push('/quran/mushaf'),
+                ),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
             onTap: () => lastRead == null
                 ? context.push('/quran/baca')
                 : context.push(

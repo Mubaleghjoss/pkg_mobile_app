@@ -813,6 +813,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.1"
+  qcf_quran:
+    dependency: "direct main"
+    description:
+      name: qcf_quran
+      sha256: "86c09ebe96008a3e1f7e73780f2ba4406fa861766b4e67710a41611e57c16f3a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.5"
   quran_api:
     dependency: "direct main"
     description:

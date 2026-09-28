@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/app_update/presentation/app_update_coordinator.dart';
 import '../features/calendar/presentation/calendar_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/game/presentation/arcade_screen.dart';
@@ -26,6 +27,7 @@ import '../features/quran/presentation/quran_barcode_screen.dart';
 import '../features/quran/presentation/quran_form_screen.dart';
 import '../features/quran/presentation/quran_screen.dart';
 import '../features/quran/presentation/quran_reader_screen.dart';
+import '../features/quran/presentation/qcf_mushaf_screen.dart';
 import '../features/siswa/presentation/siswa_detail_screen.dart';
 import '../features/siswa/presentation/siswa_form_screen.dart';
 import '../features/siswa/presentation/siswa_qr_screen.dart';
@@ -234,6 +236,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/quran/mushaf',
+        pageBuilder: (_, state) => _slidePage(
+          state: state,
+          child: QcfMushafScreen(
+            initialPage: (state.extra as int?) ?? 1,
+          ),
+        ),
+      ),
+      GoRoute(
         path: '/quran/baca',
         pageBuilder: (_, state) =>
             _slidePage(state: state, child: const QuranLibraryScreen()),
@@ -289,8 +300,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             _slidePage(child: const TugasRiwayatScreen(), state: state),
       ),
       ShellRoute(
-        builder: (context, state, child) =>
-            HomeShell(state: state, child: child),
+        builder: (context, state, child) => AppUpdateCoordinator(
+          child: HomeShell(state: state, child: child),
+        ),
         routes: [
           GoRoute(path: '/', builder: (_, _) => const DashboardScreen()),
           GoRoute(path: '/siswa', builder: (_, _) => const SiswaScreen()),
