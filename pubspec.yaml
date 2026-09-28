@@ -1,7 +1,7 @@
 name: pkgenerus_app
 description: "Klien mobile PKGenerus (Flutter) — backend tetap Laravel (API v1 + Sanctum)."
 publish_to: 'none'
-version: 1.5.0+17
+version: 1.5.1+18
 
 environment:
   sdk: ^3.13.2
