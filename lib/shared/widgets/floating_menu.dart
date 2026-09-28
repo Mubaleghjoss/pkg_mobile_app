@@ -38,15 +38,24 @@ Future<void> showFloatingMenu(
   String judul = 'Menu lainnya',
   double? bottomInset,
 }) {
+  final calculatedInset =
+      bottomInset ??
+      ((NavigationBarTheme.of(context).height ?? 80) +
+          MediaQuery.viewPaddingOf(context).bottom +
+          8);
+  // Minimum 128 dp menjaga panel tetap di atas NavigationBar + system inset
+  // pada emulator/perangkat yang menggunakan navigasi tiga tombol.
+  final insetUntukPanel = calculatedInset < 128 ? 128.0 : calculatedInset;
   return showGeneralDialog<void>(
     context: context,
     barrierLabel: judul,
+    barrierDismissible: true,
     barrierColor: Colors.black.withValues(alpha: 0.42),
     transitionDuration: PkgMotion.tab,
     pageBuilder: (ctx, _, _) => _FloatingMenuPanel(
       judul: judul,
       items: items,
-      bottomInset: bottomInset,
+      bottomInset: insetUntukPanel,
     ),
     transitionBuilder: (ctx, animation, _, child) {
       final curved = CurvedAnimation(
@@ -61,11 +70,7 @@ Future<void> showFloatingMenu(
             begin: const Offset(0, 0.12),
             end: Offset.zero,
           ).animate(curved),
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.94, end: 1).animate(curved),
-            alignment: Alignment.bottomCenter,
-            child: child,
-          ),
+          child: child,
         ),
       );
     },
@@ -93,6 +98,8 @@ class _FloatingMenuPanel extends StatelessWidget {
     // (48 dp pada mode 3 tombol, 24 dp pada mode gesture). Memakai
     // viewPadding, bukan padding, supaya nilainya tidak menyusut jadi 0
     // saat papan ketik terbuka.
+    // Sisakan ruang untuk NavigationBar aplikasi dan bilah navigasi sistem.
+    // Ini menjaga kartu terakhir tetap dapat disentuh pada perangkat 3 tombol.
     final viewPaddingBawah = MediaQuery.viewPaddingOf(context).bottom;
     final insetEfektif =
         bottomInset ??
@@ -114,7 +121,7 @@ class _FloatingMenuPanel extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             // Tidak memakai SafeArea karena insetEfektif sudah mengangkat panel
             // di atas bilah sistem, agar viewPadding bawah tidak dihitung dua kali.
-            child: Padding(
+            child: Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -131,16 +138,30 @@ class _FloatingMenuPanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Text(
-                    judul,
-                    style: Theme.of(context).textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          judul,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      IconButton.filledTonal(
+                        tooltip: 'Tutup menu',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Flexible(
                     child: GridView.count(
                       crossAxisCount: kolom,
-                      shrinkWrap: true,
+                      // Flexible sudah memberi batas tinggi; jangan shrink-wrap
+                      // agar scroll extent seluruh grid tetap terhitung di layar
+                      // landscape pendek.
+                      shrinkWrap: false,
                       physics: const ClampingScrollPhysics(),
                       mainAxisSpacing: 10,
                       crossAxisSpacing: 10,

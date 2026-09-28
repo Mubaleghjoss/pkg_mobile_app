@@ -3,12 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/api_config.dart';
+
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/celebration.dart';
 import '../../../shared/widgets/state_widgets.dart';
 import '../data/materi.dart';
 import 'materi_screen.dart';
 import 'materi_video_player.dart';
+import 'materi_pdf_reader_screen.dart';
 
 /// Detail materi: deskripsi, lampiran PDF, dan video yang langsung diputar.
 ///
@@ -22,8 +25,7 @@ class MateriDetailScreen extends ConsumerStatefulWidget {
   final int id;
 
   @override
-  ConsumerState<MateriDetailScreen> createState() =>
-      _MateriDetailScreenState();
+  ConsumerState<MateriDetailScreen> createState() => _MateriDetailScreenState();
 }
 
 class _MateriDetailScreenState extends ConsumerState<MateriDetailScreen> {
@@ -34,7 +36,47 @@ class _MateriDetailScreenState extends ConsumerState<MateriDetailScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Tautan $label disalin. Tempel di browser untuk membuka.'),
+        content: Text(
+          'Tautan $label disalin. Tempel di browser untuk membuka.',
+        ),
+      ),
+    );
+  }
+
+  void _bacaPdf(MateriPdf pdf) {
+    final normalizedUrl = materiShareUrl(pdf.url);
+    final uri = Uri.tryParse(normalizedUrl);
+    if (uri == null || uri.host.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tautan PDF tidak tersedia.')),
+      );
+      return;
+    }
+
+    // HTTPS wajib untuk server publik. HTTP hanya diizinkan untuk development
+    // lokal agar emulator dapat mengakses Laravel melalui 10.0.2.2:8010.
+    final hostLokal =
+        uri.host == '10.0.2.2' ||
+        uri.host == '127.0.0.1' ||
+        uri.host == 'localhost';
+    if (uri.scheme != 'https' && !(uri.scheme == 'http' && hostLokal)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PDF harus memakai tautan HTTPS yang aman.'),
+        ),
+      );
+      return;
+    }
+
+    final url =
+        uri.scheme == 'http' &&
+            uri.host == '127.0.0.1' &&
+            ApiConfig.baseUrl.contains('10.0.2.2')
+        ? uri.replace(host: '10.0.2.2').toString()
+        : uri.toString();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MateriPdfReaderScreen(url: url, title: pdf.name),
       ),
     );
   }
@@ -70,8 +112,9 @@ class _MateriDetailScreenState extends ConsumerState<MateriDetailScreen> {
             FadeSlideIn(
               child: Text(
                 m.judul,
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -88,8 +131,10 @@ class _MateriDetailScreenState extends ConsumerState<MateriDetailScreen> {
                     ),
                   if (m.bulan != null)
                     Chip(
-                      avatar: const Icon(Icons.calendar_month_outlined,
-                          size: 16),
+                      avatar: const Icon(
+                        Icons.calendar_month_outlined,
+                        size: 16,
+                      ),
                       label: Text(
                         DateFormat('MMMM yyyy', 'id').format(m.bulan!),
                       ),
@@ -116,7 +161,7 @@ class _MateriDetailScreenState extends ConsumerState<MateriDetailScreen> {
             ],
             if (m.pdfs.isNotEmpty) ...[
               const SizedBox(height: 24),
-              _SectionTitle('Dokumen (${m.pdfs.length})'),
+              _SectionTitle('Bahan bacaan PDF (${m.pdfs.length})'),
               const SizedBox(height: 8),
               ...m.pdfs.map(
                 (p) => Card(
@@ -124,8 +169,9 @@ class _MateriDetailScreenState extends ConsumerState<MateriDetailScreen> {
                   child: ListTile(
                     leading: const Icon(Icons.picture_as_pdf_outlined),
                     title: Text(p.name),
-                    trailing: const Icon(Icons.copy_all_outlined, size: 18),
-                    onTap: () => _buka(p.url, 'dokumen'),
+                    subtitle: const Text('Ketuk untuk membaca di aplikasi'),
+                    trailing: const Icon(Icons.menu_book_outlined),
+                    onTap: () => _bacaPdf(p),
                   ),
                 ),
               ),
@@ -227,10 +273,8 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: Theme.of(context)
-            .textTheme
-            .titleSmall
-            ?.copyWith(fontWeight: FontWeight.w700),
-      );
+    text,
+    style: Theme.of(context).textTheme.titleSmall
+        ?.copyWith(fontWeight: FontWeight.w700),
+  );
 }

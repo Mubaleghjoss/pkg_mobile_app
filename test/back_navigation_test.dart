@@ -52,6 +52,21 @@ void main() {
     expect(find.text('tab pertama'), findsOneWidget);
   });
 
+  testWidgets('rute kalender mengganti isi shell segera setelah navigasi', (
+    tester,
+  ) async {
+    await pasangAplikasi(tester, lokasiAwal: '/');
+    expect(find.text('tab pertama'), findsOneWidget);
+
+    router.go('/kalender');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(router.state.uri.path, '/kalender');
+    expect(find.text('kalender'), findsOneWidget);
+    expect(find.text('tab pertama'), findsNothing);
+  });
+
   testWidgets('di tab pertama back diizinkan menutup aplikasi', (tester) async {
     await pasangAplikasi(tester, lokasiAwal: '/');
 

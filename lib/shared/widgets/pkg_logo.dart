@@ -54,7 +54,7 @@ class PkgWordmark extends StatelessWidget {
   const PkgWordmark({
     super.key,
     this.logoSize = 28,
-    this.title = 'PKGenerus',
+    this.title = 'PKG Panunggangan',
     this.subtitle,
   });
 

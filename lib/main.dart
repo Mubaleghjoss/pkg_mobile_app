@@ -26,7 +26,7 @@ class PkgApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'PKGenerus',
+      title: 'PKG Panunggangan',
       debugShowCheckedModeBanner: false,
       theme: PkgTheme.light(),
       darkTheme: PkgTheme.dark(),

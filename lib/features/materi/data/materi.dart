@@ -101,7 +101,7 @@ class MateriPdf {
   final String url;
 
   factory MateriPdf.fromJson(Map<String, dynamic> json) => MateriPdf(
-        name: '${json['name'] ?? 'Dokumen'}',
+        name: '${json['nama'] ?? json['name'] ?? 'Dokumen'}',
         url: '${json['url'] ?? ''}',
       );
 }

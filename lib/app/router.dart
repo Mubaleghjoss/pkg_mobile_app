@@ -25,6 +25,7 @@ import '../features/profil/presentation/profil_screen.dart';
 import '../features/quran/presentation/quran_barcode_screen.dart';
 import '../features/quran/presentation/quran_form_screen.dart';
 import '../features/quran/presentation/quran_screen.dart';
+import '../features/quran/presentation/quran_reader_screen.dart';
 import '../features/siswa/presentation/siswa_detail_screen.dart';
 import '../features/siswa/presentation/siswa_form_screen.dart';
 import '../features/siswa/presentation/siswa_qr_screen.dart';
@@ -233,6 +234,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/quran/baca',
+        pageBuilder: (_, state) =>
+            _slidePage(state: state, child: const QuranLibraryScreen()),
+        routes: [
+          GoRoute(
+            path: ':surah',
+            pageBuilder: (_, state) => _slidePage(
+              state: state,
+              child: QuranReaderScreen(
+                surahNumber:
+                    int.tryParse(state.pathParameters['surah'] ?? '') ?? 1,
+                initialAyah: state.extra as int?,
+              ),
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
         path: '/quran/baru',
         pageBuilder: (_, state) =>
             _sheetPage(child: const QuranFormScreen(), state: state),
@@ -340,7 +359,7 @@ class _PkgSplashScreenState extends State<PkgSplashScreen>
             ),
             const SizedBox(height: 28),
             Text(
-              'PKGenerus',
+              'PKG Panunggangan',
               style: Theme.of(context).textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
@@ -667,8 +686,6 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
-  int _previousIndex = 0;
-
   /// Daftar tab aktif mengikuti aktor yang sedang login.
   List<({String path, String label, IconData icon})> get _tabs =>
       HomeShell.tabsFor(ref.read(authControllerProvider).session);
@@ -707,18 +724,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     return extra?.label ?? _tabs[_index].label;
   }
 
-  @override
-  void didUpdateWidget(covariant HomeShell oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final old = _tabs.indexWhere(
-      (t) => t.path == oldWidget.state.matchedLocation,
-    );
-    if (old >= 0 && old != _index) _previousIndex = old;
-  }
-
   void _goTab(int i) {
     if (i == _index && _tabIndex >= 0) return;
-    _previousIndex = _index;
     context.go(_tabs[i].path);
   }
 
@@ -769,35 +776,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 800;
     final auth = ref.watch(authControllerProvider);
-    final forward = _index >= _previousIndex;
-
+    // Child dari GoRouter dapat membawa GlobalKey. Jangan menahan child lama
+    // di AnimatedSwitcher ketika rute berubah: dua page bersamaan memicu
+    // Duplicate GlobalKey dan pada perangkat tampak sebagai layar putih.
     final body = GestureDetector(
       // Hanya usap horizontal; scroll vertikal daftar tidak terganggu.
       onHorizontalDragEnd: _onHorizontalDrag,
-      child: AnimatedSwitcher(
-        duration: PkgMotion.tab,
-        switchInCurve: PkgMotion.curve,
-        switchOutCurve: PkgMotion.reverseCurve,
-        layoutBuilder: (current, previous) => Stack(
-          alignment: Alignment.topCenter,
-          children: [...previous, ?current],
-        ),
-        transitionBuilder: (child, animation) {
-          final isIncoming = child.key == ValueKey(_index);
-          final begin = isIncoming
-              ? Offset(forward ? 0.12 : -0.12, 0)
-              : Offset(forward ? -0.08 : 0.08, 0);
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(begin: begin, end: Offset.zero).animate(
-                CurvedAnimation(parent: animation, curve: PkgMotion.curve),
-              ),
-              child: child,
-            ),
-          );
-        },
-        child: KeyedSubtree(key: ValueKey(_index), child: widget.child),
+      child: KeyedSubtree(
+        key: ValueKey<String>(widget.state.matchedLocation),
+        child: widget.child,
       ),
     );
 
@@ -872,7 +859,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         if (didPop || _tabIndex == 0) return;
         // `go` tidak menyisakan stack. Back dari tab lain/rute Lainnya harus
         // kembali ke beranda shell, bukan menyerahkan penutupan ke Android.
-        _previousIndex = 0;
         context.go(_tabs[0].path);
       },
       child: shell,

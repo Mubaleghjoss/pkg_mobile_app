@@ -112,7 +112,7 @@ void main() {
     expect(find.text('Menu 0'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.drag(find.byType(GridView), const Offset(0, -220));
+    await tester.drag(find.byType(GridView), const Offset(0, -1000));
     await tester.pumpAndSettle();
 
     expect(find.text('Menu 7'), findsOneWidget);
