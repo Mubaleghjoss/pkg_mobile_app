@@ -15,6 +15,7 @@ import '../features/karakter/data/karakter_luhur_repository.dart';
 import '../features/kelas/data/binaan_repository.dart';
 import '../features/materi/data/materi_repository.dart';
 import '../features/ortu/data/ortu_repository.dart';
+import '../features/presensi/data/face_attendance_repository.dart';
 import '../features/presensi/data/presensi_repository.dart';
 import '../features/quran/data/quran_repository.dart';
 import '../features/siswa/data/siswa_repository.dart';
@@ -66,12 +67,19 @@ final presensiRepositoryProvider = Provider<PresensiRepository>((ref) {
   return PresensiRepository(ref.watch(dioProvider));
 });
 
+final faceAttendanceRepositoryProvider = Provider<FaceAttendanceRepository>((
+  ref,
+) {
+  return FaceAttendanceRepository(ref.watch(dioProvider));
+});
+
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
   return DashboardRepository(ref.watch(dioProvider));
 });
 
-final karakterLuhurRepositoryProvider =
-    Provider<KarakterLuhurRepository>((ref) {
+final karakterLuhurRepositoryProvider = Provider<KarakterLuhurRepository>((
+  ref,
+) {
   return KarakterLuhurRepository(ref.watch(dioProvider));
 });
 
