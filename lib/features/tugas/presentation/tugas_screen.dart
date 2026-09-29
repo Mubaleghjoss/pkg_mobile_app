@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
@@ -20,16 +21,15 @@ class TugasTanggalController extends Notifier<DateTime> {
   void set(DateTime d) => state = d;
 }
 
-final tugasTanggalProvider =
-    NotifierProvider<TugasTanggalController, DateTime>(
+final tugasTanggalProvider = NotifierProvider<TugasTanggalController, DateTime>(
   TugasTanggalController.new,
 );
 
 final tugasHarianProvider = FutureProvider<TugasHarian>((ref) async {
   final tanggal = ref.watch(tugasTanggalProvider);
-  final result = await ref.watch(tugasRepositoryProvider).harian(
-        date: DateFormat('yyyy-MM-dd').format(tanggal),
-      );
+  final result = await ref
+      .watch(tugasRepositoryProvider)
+      .harian(date: DateFormat('yyyy-MM-dd').format(tanggal));
   if (!result.ok || result.data == null) {
     throw Exception(result.error ?? 'Gagal memuat tugas');
   }
@@ -70,7 +70,8 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
     // Daftar kosong tetap dikirim: VerifikasiWatcher memakainya untuk menetapkan
     // garis dasar, supaya verifikasi pertama yang datang nanti tidak dianggap
     // riwayat lama dan ikut ditelan.
-    final kunci = '${data.meta.date}|'
+    final kunci =
+        '${data.meta.date}|'
         '${terverifikasi.map((e) => e.id).join(',')}';
     if (_terakhirDiperiksa == kunci) return;
     _terakhirDiperiksa = kunci;
@@ -90,7 +91,9 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
     }
 
     setState(() => _mengirim = t.id);
-    final result = await ref.read(tugasRepositoryProvider).submit(
+    final result = await ref
+        .read(tugasRepositoryProvider)
+        .submit(
           t.id,
           hasilTeks: hasilTeks,
           clickCount: t.isKlik ? t.targetKlik : null,
@@ -145,8 +148,9 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
     if (teks == null || teks.trim().isEmpty) return;
 
     setState(() => _mengirim = t.id);
-    final result =
-        await ref.read(tugasRepositoryProvider).comment(checklistId, teks);
+    final result = await ref
+        .read(tugasRepositoryProvider)
+        .comment(checklistId, teks);
     if (!mounted) return;
     setState(() => _mengirim = null);
 
@@ -157,9 +161,8 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
       return;
     }
     ref.invalidate(tugasHarianProvider);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Komentar terkirim')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Komentar terkirim')));
   }
 
   Future<String?> _tanyaTeks(TugasPkg t) async {
@@ -180,7 +183,8 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
 
   Future<void> _pilihTanggal(TugasHarianMeta meta) async {
     final now = DateTime.now();
-    final min = DateTime.tryParse(meta.minDate ?? '') ??
+    final min =
+        DateTime.tryParse(meta.minDate ?? '') ??
         now.subtract(const Duration(days: 30));
     final max = DateTime.tryParse(meta.maxDate ?? '') ?? now;
     final dipilih = await showDatePicker(
@@ -220,9 +224,26 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
             children: [
               // Kartu streak: pelengkap motivasi, sembunyi sendiri bila data
               // gamifikasi belum tersedia.
-              StreakCard(
-                judul: isOrtu ? 'Streak anak' : 'Streak harian',
-              ),
+              StreakCard(judul: isOrtu ? 'Streak anak' : 'Streak harian'),
+              if (!isOrtu)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Card(
+                    color: theme.colorScheme.primaryContainer,
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.face_retouching_natural_outlined,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                      title: const Text('Presensi wajah'),
+                      subtitle: const Text(
+                        'Scan cepat dengan GPS sesuai radius lokasi admin.',
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+                      onTap: () => context.push('/presensi-wajah'),
+                    ),
+                  ),
+                ),
               FadeSlideIn(
                 child: Card(
                   child: Padding(
@@ -235,8 +256,9 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
                             Expanded(
                               child: Text(
                                 _labelTanggal(meta.date),
-                                style: theme.textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                             IconButton(
@@ -317,7 +339,8 @@ class _TugasScreenState extends ConsumerState<TugasScreen> {
     final d = DateTime.tryParse(iso);
     if (d == null) return iso;
     final hariIni = DateTime.now();
-    final sama = d.year == hariIni.year &&
+    final sama =
+        d.year == hariIni.year &&
         d.month == hariIni.month &&
         d.day == hariIni.day;
     final teks = DateFormat('EEEE, d MMMM yyyy', 'id').format(d);
@@ -383,8 +406,9 @@ class _TugasCard extends StatelessWidget {
                     children: [
                       Text(
                         tugas.nama,
-                        style: theme.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       Text(
                         '${tugas.kategoriLabel ?? tugas.kategori ?? 'Umum'}'
@@ -397,8 +421,11 @@ class _TugasCard extends StatelessWidget {
                 if (terverifikasi)
                   Tooltip(
                     message: 'Sudah diverifikasi pamong',
-                    child: Icon(Icons.verified,
-                        size: 20, color: theme.colorScheme.primary),
+                    child: Icon(
+                      Icons.verified,
+                      size: 20,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
               ],
             ),
@@ -447,8 +474,9 @@ class _TugasCard extends StatelessWidget {
               Text(
                 'Tugas ini wajib melampirkan bukti foto/suara — kerjakan lewat '
                 'web karena unggah bukti belum tersedia di aplikasi.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.error),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
               ),
             ],
             if (!readOnly && !selesai && !tugas.blockedByWebProof) ...[
@@ -472,8 +500,11 @@ class _TugasCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(Icons.check_circle,
-                      size: 16, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.check_circle,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     terverifikasi
@@ -510,14 +541,14 @@ class _TugasCard extends StatelessWidget {
   }
 
   static IconData _ikonJenis(String jenis) => switch (jenis) {
-        'teks' => Icons.edit_note_outlined,
-        'klik' => Icons.touch_app_outlined,
-        _ => Icons.check_box_outlined,
-      };
+    'teks' => Icons.edit_note_outlined,
+    'klik' => Icons.touch_app_outlined,
+    _ => Icons.check_box_outlined,
+  };
 
   static String _labelAksi(TugasPkg t) => switch (t.jenisPenyelesaian) {
-        'teks' => 'Tulis & kirim',
-        'klik' => 'Tandai ${t.targetKlik ?? 1}x selesai',
-        _ => 'Tandai selesai',
-      };
+    'teks' => 'Tulis & kirim',
+    'klik' => 'Tandai ${t.targetKlik ?? 1}x selesai',
+    _ => 'Tandai selesai',
+  };
 }

@@ -20,6 +20,7 @@ import '../features/ortu/presentation/ortu_monitoring_screen.dart';
 import '../features/presensi/presentation/presensi_form_screen.dart';
 import '../features/presensi/presentation/presensi_screen.dart';
 import '../features/presensi/presentation/presensi_statistik_screen.dart';
+import '../features/presensi/presentation/face_attendance_screen.dart';
 import '../features/presensi/presentation/scan_qr_screen.dart';
 import '../features/profil/presentation/change_password_screen.dart';
 import '../features/profil/presentation/profil_screen.dart';
@@ -107,7 +108,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         return loc == '/splash' ? null : '/splash';
       }
       if (!auth.isAuthenticated) {
-        return loc == '/login' ? null : '/login';
+        // Scanner presensi QR adalah alur publik: endpoint backend
+        // POST /api/v1/presensi/scan-qr memang tidak memakai Sanctum.
+        return loc == '/login' || loc == '/scan-qr' ? null : '/login';
       }
       // Dasbor '/' memanggil /dashboard/stats + /dashboard/recent-activities
       // yang lingkupnya seluruh sekolah (total siswa, nama siswa lain), dan
@@ -181,6 +184,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             _sheetPage(child: const ScanQrScreen(), state: state),
       ),
       GoRoute(
+        path: '/presensi-wajah',
+        pageBuilder: (_, state) =>
+            _slidePage(child: const FaceAttendanceScreen(), state: state),
+      ),
+      GoRoute(
         path: '/profil',
         pageBuilder: (_, state) =>
             _slidePage(child: const ProfilScreen(), state: state),
@@ -239,9 +247,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/quran/mushaf',
         pageBuilder: (_, state) => _slidePage(
           state: state,
-          child: QcfMushafScreen(
-            initialPage: (state.extra as int?) ?? 1,
-          ),
+          child: QcfMushafScreen(initialPage: (state.extra as int?) ?? 1),
         ),
       ),
       GoRoute(
@@ -551,6 +557,13 @@ class HomeShell extends ConsumerStatefulWidget {
             inShell: false,
           ),
           (
+            path: '/presensi-wajah',
+            label: 'Presensi wajah',
+            icon: Icons.face_retouching_natural_outlined,
+            deskripsi: 'Daftar dan scan wajah',
+            inShell: false,
+          ),
+          (
             path: '/profil',
             label: 'Profil',
             icon: Icons.account_circle_outlined,
@@ -673,6 +686,13 @@ class HomeShell extends ConsumerStatefulWidget {
             label: 'Statistik',
             icon: Icons.query_stats_outlined,
             deskripsi: 'Rekap kehadiran',
+            inShell: false,
+          ),
+          (
+            path: '/presensi-wajah',
+            label: 'Presensi wajah',
+            icon: Icons.face_retouching_natural_outlined,
+            deskripsi: 'Status profil wajah',
             inShell: false,
           ),
           (

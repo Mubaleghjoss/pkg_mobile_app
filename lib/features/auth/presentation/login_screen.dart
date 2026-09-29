@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/pkg_logo.dart';
 import '../application/auth_controller.dart';
+import '../../presensi/presentation/face_camera_screen.dart';
+
+const bool faceLocalDemo = bool.fromEnvironment(
+  'PKG_FACE_LOCAL_DEMO',
+  defaultValue: false,
+);
+
+@visibleForTesting
+bool get isFaceLocalDemoEnabled => faceLocalDemo;
+
+void openFaceLocalDemo(BuildContext context) {
+  if (!faceLocalDemo) return;
+  Navigator.of(context)
+      .push(MaterialPageRoute<void>(builder: (_) => const FaceCameraScreen()));
+}
 
 /// Layar login dengan tiga jenis akun.
 ///
@@ -12,7 +28,9 @@ import '../application/auth_controller.dart';
 /// - Siswa        → `POST /siswa/login` (`nis` + `password`, tabel `siswa`)
 /// - Orang tua    → `POST /ortu/login` (`username` wali + `password`)
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.redirectAfterLogin});
+
+  final String? redirectAfterLogin;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -33,7 +51,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.dispose();
   }
 
-
   final _formKey = GlobalKey<FormState>();
   final _idCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -43,25 +60,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (mounted) setState(() {});
     });
 
-  ({String label, IconData icon, String hint}) get _mode => switch (
-          _tabs.index) {
+  ({String label, IconData icon, String hint}) get _mode =>
+      switch (_tabs.index) {
         1 => (
-            label: 'NIS siswa',
-            icon: Icons.badge_outlined,
-            hint: 'Masuk dengan NIS dan password yang diberikan pamong.',
-          ),
+          label: 'NIS siswa',
+          icon: Icons.badge_outlined,
+          hint: 'Masuk dengan NIS dan password yang diberikan pamong.',
+        ),
         2 => (
-            label: 'Username wali',
-            icon: Icons.family_restroom_outlined,
-            hint: 'Akun wali dibuat pamong. Orang tua hanya bisa memantau '
-                'dan memberi komentar.',
-          ),
+          label: 'Username wali',
+          icon: Icons.family_restroom_outlined,
+          hint:
+              'Akun wali dibuat pamong. Orang tua hanya bisa memantau '
+              'dan memberi komentar.',
+        ),
         _ => (
-            label: 'Username',
-            icon: Icons.person_outline,
-            hint: 'Untuk admin dan pamong. Login dibatasi 5 percobaan '
-                'per 5 menit.',
-          ),
+          label: 'Username',
+          icon: Icons.person_outline,
+          hint:
+              'Untuk admin dan pamong. Login dibatasi 5 percobaan '
+              'per 5 menit.',
+        ),
       };
 
   Future<void> _submit() async {
@@ -103,8 +122,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   Text(
                     'PKG Panunggangan',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -160,14 +180,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         tooltip: _obscure
                             ? 'Tampilkan password'
                             : 'Sembunyikan password',
-                        icon: Icon(_obscure
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined),
+                        icon: Icon(
+                          _obscure
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Password wajib diisi' : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Password wajib diisi'
+                        : null,
                   ),
                   if (auth.error != null) ...[
                     const SizedBox(height: 16),
@@ -182,9 +205,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline,
-                                  size: 18,
-                                  color: theme.colorScheme.onErrorContainer),
+                              Icon(
+                                Icons.error_outline,
+                                size: 18,
+                                color: theme.colorScheme.onErrorContainer,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -211,6 +236,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           )
                         : const Text('Masuk'),
                   ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => context.push('/scan-qr'),
+                    icon: const Icon(Icons.qr_code_scanner_outlined),
+                    label: const Text('Scan QR presensi tanpa login'),
+                  ),
+                  if (faceLocalDemo) ...[
+                    const SizedBox(height: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: () => openFaceLocalDemo(context),
+                      icon: const Icon(Icons.face_retouching_natural),
+                      label: const Text('Demo kamera wajah lokal'),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Build demo: tidak login, tidak upload, tidak membuat presensi.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelSmall,
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Text(
                     mode.hint,

@@ -14,6 +14,7 @@ class FaceProfileStatus {
     this.status,
     this.enrolledAt,
     this.lastUsedAt,
+    this.location,
   });
 
   factory FaceProfileStatus.fromJson(Map<String, dynamic> json) =>
@@ -24,6 +25,9 @@ class FaceProfileStatus {
         status: json['status']?.toString(),
         enrolledAt: json['enrolled_at']?.toString(),
         lastUsedAt: json['last_used_at']?.toString(),
+        location: (json['location'] as Map?)?.map(
+          (key, value) => MapEntry('$key', (value as num).toDouble()),
+        ),
       );
 
   final bool configured;
@@ -32,6 +36,7 @@ class FaceProfileStatus {
   final String? status;
   final String? enrolledAt;
   final String? lastUsedAt;
+  final Map<String, double>? location;
 
   static int? _int(Object? value) =>
       value is int ? value : int.tryParse('$value');
