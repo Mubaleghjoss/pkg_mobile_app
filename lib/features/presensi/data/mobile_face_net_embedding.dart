@@ -32,21 +32,28 @@ class MobileFaceNetEmbedding {
     final bytes = await File(path).readAsBytes();
     final decoded = img.decodeImage(bytes);
     if (decoded == null) {
-      throw const FormatException('Foto kamera tidak dapat dibaca.');
+      throw const FormatException(
+        'Foto kamera tidak dapat dibaca. Ambil foto ulang dengan pencahayaan cukup.',
+      );
     }
 
-    final left = face.left.round().clamp(0, decoded.width - 1);
-    final top = face.top.round().clamp(0, decoded.height - 1);
+    // Camera JPEGs may carry portrait orientation in EXIF. Bake it before
+    // applying ML Kit's face bounds; otherwise the crop can be sideways or
+    // effectively flattened on some Android devices.
+    final oriented = img.bakeOrientation(decoded);
+
+    final left = face.left.round().clamp(0, oriented.width - 1);
+    final top = face.top.round().clamp(0, oriented.height - 1);
     final right = (face.left + face.width).round().clamp(
       left + 1,
-      decoded.width,
+      oriented.width,
     );
     final bottom = (face.top + face.height).round().clamp(
       top + 1,
-      decoded.height,
+      oriented.height,
     );
     final crop = img.copyCrop(
-      decoded,
+      oriented,
       x: left,
       y: top,
       width: right - left,

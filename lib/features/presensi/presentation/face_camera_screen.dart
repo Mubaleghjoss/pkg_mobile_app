@@ -24,10 +24,7 @@ class FaceCapturePayload {
 }
 
 class FaceCameraScreen extends StatefulWidget {
-  const FaceCameraScreen({
-    super.key,
-    this.mode = FaceCameraMode.enrollment,
-  });
+  const FaceCameraScreen({super.key, this.mode = FaceCameraMode.enrollment});
 
   final FaceCameraMode mode;
 
@@ -40,6 +37,7 @@ class _FaceCameraScreenState extends State<FaceCameraScreen> {
   FaceDetector? _detector;
   MobileFaceNetEmbedding? _embedding;
   String _status = 'Menyiapkan kamera…';
+  String _stage = 'kamera';
   bool _busy = false;
   bool _ready = false;
 
@@ -86,11 +84,31 @@ class _FaceCameraScreenState extends State<FaceCameraScreen> {
         _ready = true;
         _status = 'Posisikan satu wajah di tengah bingkai.';
       });
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _status = 'Kamera atau model wajah tidak dapat digunakan.');
+        setState(() => _status = _cameraErrorMessage(error));
       }
     }
+  }
+
+  String _cameraErrorMessage(Object error) {
+    final text = error
+        .toString()
+        .replaceFirst(RegExp(r'^Exception:\s*'), '')
+        .trim();
+    final prefix = 'Tahap $_stage gagal. ';
+    if (text.contains('permission') || text.contains('authorized')) {
+      return 'Izin kamera belum diberikan. Buka Pengaturan Android > Aplikasi > PKGenerus > Izin > Kamera.';
+    }
+    if (text.contains('model') ||
+        text.contains('asset') ||
+        text.contains('interpreter')) {
+      return 'Model wajah belum siap. Tutup aplikasi, buka lagi, dan ulangi. Jika tetap gagal, laporkan ke admin.';
+    }
+    if (text.isNotEmpty && text != 'null') {
+      return '$prefix Kamera gagal menganalisis foto: $text';
+    }
+    return 'Kamera gagal mengambil foto. Pastikan kamera tidak dipakai aplikasi lain lalu ulangi.';
   }
 
   Future<void> _capture() async {
@@ -104,8 +122,10 @@ class _FaceCameraScreenState extends State<FaceCameraScreen> {
 
     String? path;
     try {
+      _stage = 'mengambil foto';
       final image = await controller.takePicture();
       path = image.path;
+      _stage = 'mendeteksi wajah';
       final input = InputImage.fromFilePath(path);
       final faces = await detector.processImage(input);
       final size = await _imageSize(path);
@@ -127,6 +147,7 @@ class _FaceCameraScreenState extends State<FaceCameraScreen> {
         return;
       }
 
+      _stage = 'membuat descriptor';
       final embedding = _embedding;
       if (embedding == null) throw StateError('Model wajah belum siap.');
       final face = faces.single.boundingBox;
@@ -147,8 +168,14 @@ class _FaceCameraScreenState extends State<FaceCameraScreen> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(payload);
-    } catch (_) {
-      if (mounted) setState(() => _status = 'Analisis kamera gagal. Silakan ulangi.');
+    } on FormatException catch (error) {
+      if (mounted) setState(() => _status = error.message);
+    } on StateError catch (error) {
+      if (mounted) setState(() => _status = error.message);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _status = _cameraErrorMessage(error));
+      }
     } finally {
       if (path != null) {
         try {
@@ -198,7 +225,11 @@ class _FaceCameraScreenState extends State<FaceCameraScreen> {
                     ),
                   ),
                   Chip(
-                    avatar: Icon(Icons.lock_outline, size: 16, color: scheme.primary),
+                    avatar: Icon(
+                      Icons.lock_outline,
+                      size: 16,
+                      color: scheme.primary,
+                    ),
                     label: const Text('Di perangkat'),
                     visualDensity: VisualDensity.compact,
                   ),
@@ -214,9 +245,15 @@ class _FaceCameraScreenState extends State<FaceCameraScreen> {
                     color: Colors.black,
                     child: controller != null && controller.value.isInitialized
                         ? Center(
-                            child: AspectRatio(
-                              aspectRatio: controller.value.aspectRatio,
-                              child: CameraPreview(controller),
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: SizedBox(
+                                width:
+                                    controller.value.previewSize?.height ?? 1,
+                                height:
+                                    controller.value.previewSize?.width ?? 1,
+                                child: CameraPreview(controller),
+                              ),
                             ),
                           )
                         : const Center(child: CircularProgressIndicator()),
@@ -241,8 +278,18 @@ class _FaceCameraScreenState extends State<FaceCameraScreen> {
                     width: double.infinity,
                     child: FilledButton.icon(
                       onPressed: _ready && !_busy ? _capture : null,
-                      icon: Icon(_isEnrollment ? Icons.person_add_alt_1 : Icons.fact_check_outlined),
-                      label: Text(_busy ? 'Memproses…' : (_isEnrollment ? 'Daftarkan wajah' : 'Scan presensi')),
+                      icon: Icon(
+                        _isEnrollment
+                            ? Icons.person_add_alt_1
+                            : Icons.fact_check_outlined,
+                      ),
+                      label: Text(
+                        _busy
+                            ? 'Memproses…'
+                            : (_isEnrollment
+                                  ? 'Daftarkan wajah'
+                                  : 'Scan presensi'),
+                      ),
                     ),
                   ),
                 ],

@@ -14,6 +14,7 @@ class FaceProfileStatus {
     this.status,
     this.enrolledAt,
     this.lastUsedAt,
+    this.legacyProfile = false,
     this.location,
   });
 
@@ -25,6 +26,7 @@ class FaceProfileStatus {
         status: json['status']?.toString(),
         enrolledAt: json['enrolled_at']?.toString(),
         lastUsedAt: json['last_used_at']?.toString(),
+        legacyProfile: json['legacy_profile'] == true,
         location: (json['location'] as Map?)?.map(
           (key, value) => MapEntry('$key', (value as num).toDouble()),
         ),
@@ -36,6 +38,7 @@ class FaceProfileStatus {
   final String? status;
   final String? enrolledAt;
   final String? lastUsedAt;
+  final bool legacyProfile;
   final Map<String, double>? location;
 
   static int? _int(Object? value) =>

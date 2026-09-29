@@ -210,6 +210,8 @@ class _StatusContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final enrolled = status.configured && status.status == 'active';
+    final needsMobileEnrollment =
+        status.legacyProfile || status.status == 'needs_mobile_enrollment';
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -221,8 +223,10 @@ class _StatusContent extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           enrolled
-              ? 'Profil wajah terdaftar'
-              : 'Profil wajah wajib didaftarkan',
+              ? 'Profil wajah Android terdaftar'
+              : (needsMobileEnrollment
+                    ? 'Data awal Android perlu dibuat ulang'
+                    : 'Profil wajah wajib didaftarkan'),
           style: Theme.of(context).textTheme.headlineSmall,
           textAlign: TextAlign.center,
         ),
@@ -230,18 +234,28 @@ class _StatusContent extends StatelessWidget {
         Text(
           enrolled
               ? 'Gunakan scan wajah untuk mencatat presensi Anda. Model dan descriptor enrollment sama dengan proses scan.'
-              : 'Daftarkan wajah terlebih dahulu melalui kamera aplikasi sebelum menggunakan presensi wajah.',
+              : (needsMobileEnrollment
+                    ? 'Akun ini memiliki data wajah lama yang belum kompatibel dengan Android. Buat data awal MobileFaceNet dari kamera aplikasi terlebih dahulu.'
+                    : 'Daftarkan wajah terlebih dahulu melalui kamera aplikasi sebelum menggunakan presensi wajah.'),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
         Card(
           child: ListTile(
             leading: Icon(enrolled ? Icons.verified_user : Icons.info_outline),
-            title: Text(enrolled ? 'Siap digunakan' : 'Belum siap scan'),
+            title: Text(
+              enrolled
+                  ? 'Siap digunakan'
+                  : (needsMobileEnrollment
+                        ? 'Wajib buat data awal Android'
+                        : 'Belum siap scan'),
+            ),
             subtitle: Text(
               enrolled
-                  ? 'Profil MobileFaceNet aktif untuk akun ini.'
-                  : 'Tidak ada data wajah aktif untuk akun ini.',
+                  ? 'Profil MobileFaceNet aktif dan terikat ke akun yang sedang login.'
+                  : (needsMobileEnrollment
+                        ? 'Profil lama tidak dapat dipakai untuk scan Android. Tekan tombol di bawah untuk enrollment ulang.'
+                        : 'Tidak ada data wajah MobileFaceNet aktif untuk akun ini.'),
             ),
           ),
         ),
