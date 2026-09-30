@@ -72,19 +72,29 @@ android {
     buildTypes {
         release {
             // APK rilis WAJIB ditandatangani keystore sendiri. Tanpa
-            // key.properties build release gagal cepat, bukan diam-diam
-            // memakai kunci debug (APK debug tidak boleh dibagikan ke publik).
-            signingConfig = if (keystoreProperties.isNotEmpty()) {
-                signingConfigs.getByName("release")
-            } else {
-                throw GradleException(
-                    "android/key.properties tidak ditemukan. " +
-                        "Build release butuh keystore rilis; lihat docs/mobile-release.md."
-                )
+            // key.properties, jangan diam-diam memakai kunci debug.
+            // Validasi dilakukan pada task release di bawah agar konfigurasi
+            // debug/emulator tidak memerlukan credential signing rilis.
+            if (keystoreProperties.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
             }
         }
     }
-}
+
+    // Debug builds are allowed to use Android's debug signing for emulator
+    // testing. Release builds must fail explicitly without key.properties.
+    tasks.matching { it.name.contains("Release", ignoreCase = true) }
+        .configureEach {
+            doFirst {
+                if (keystoreProperties.isEmpty()) {
+                    throw GradleException(
+                        "android/key.properties tidak ditemukan. " +
+                            "Build release butuh keystore rilis; lihat docs/mobile-release.md."
+                    )
+                }
+            }
+        }
+    }
 
 kotlin {
     compilerOptions {

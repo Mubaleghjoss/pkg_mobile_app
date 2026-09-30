@@ -79,8 +79,10 @@ class FcmPushService {
   }
 
   String _routeOf(RemoteMessage message) {
-    final raw = message.data['route'] ?? message.data['url'];
-    return raw is String && raw.startsWith('/') ? raw : '/';
+    final raw = message.data['route'];
+    // Notification routes are semantic app routes, never arbitrary URLs.
+    if (raw == '/chat') return raw;
+    return '/';
   }
 
   Future<void> dispose() async {
