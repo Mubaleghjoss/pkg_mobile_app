@@ -2,5 +2,6 @@
 <resources>
     <!-- Transparan agar logo terbaru tidak membawa kotak krem/putih pada mode gelap. -->
     <color name="ic_launcher_background">#00000000</color>
+    <color name="pkg_notification_accent">#1B5E20</color>
     <color name="pkg_splash_background">#F8F6E8</color>
 </resources>
