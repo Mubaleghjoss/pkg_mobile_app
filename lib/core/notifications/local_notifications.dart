@@ -3,21 +3,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Notifikasi lokal (tanpa server push).
-///
-/// Dipakai untuk memberi tahu siswa saat tugas PKG-nya diverifikasi pamong.
-/// Backend PKGenerus tidak punya FCM, jadi deteksinya dilakukan di klien:
-/// [VerifikasiWatcher] membandingkan daftar checklist terverifikasi terbaru
-/// dengan yang sudah pernah dilihat, lalu memanggil [tampilkan].
-///
-/// Semua metode aman dipanggil di platform tanpa dukungan (mis. unit test /
-/// desktop): kegagalan inisialisasi hanya dicatat, tidak melempar, sehingga
-/// tidak pernah menjatuhkan alur utama aplikasi.
 abstract class NotifikasiLokal {
-  /// Siapkan channel & minta izin bila perlu. Idempoten.
   Future<void> init();
 
-  /// Tampilkan satu notifikasi.
   Future<void> tampilkan({
     required int id,
     required String judul,
@@ -25,19 +13,48 @@ abstract class NotifikasiLokal {
   });
 }
 
+extension NotifikasiRouteHandlerExtension on NotifikasiLokal {
+  void setRouteHandler(void Function(String route) handler) {
+    if (this is FlutterLocalNotifikasi) {
+      (this as FlutterLocalNotifikasi).setRouteHandler(handler);
+    }
+  }
+
+  Future<void> tampilkanDenganRute({
+    required int id,
+    required String judul,
+    required String isi,
+    required String route,
+  }) async {
+    if (this is FlutterLocalNotifikasi) {
+      await (this as FlutterLocalNotifikasi).tampilkanDenganRute(
+        id: id,
+        judul: judul,
+        isi: isi,
+        route: route,
+      );
+    } else {
+      await tampilkan(id: id, judul: judul, isi: isi);
+    }
+  }
+}
+
 class FlutterLocalNotifikasi implements NotifikasiLokal {
   FlutterLocalNotifikasi([FlutterLocalNotificationsPlugin? plugin])
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
-  static const _channelId = 'pkg_verifikasi';
-  static const _channelNama = 'Verifikasi tugas PKG';
-  static const _channelDeskripsi =
-      'Pemberitahuan saat tugas PKG diverifikasi pamong.';
+  static const _channelId = 'pkg_aktivitas';
+  static const _channelNama = 'Aktivitas PKGenerus';
+  static const _channelDeskripsi = 'Pemberitahuan aktivitas PKGenerus.';
 
   final FlutterLocalNotificationsPlugin _plugin;
-
+  void Function(String route)? _routeHandler;
   bool _siap = false;
   bool _gagal = false;
+
+  void setRouteHandler(void Function(String route) handler) {
+    _routeHandler = handler;
+  }
 
   @override
   Future<void> init() async {
@@ -48,8 +65,13 @@ class FlutterLocalNotifikasi implements NotifikasiLokal {
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
           iOS: DarwinInitializationSettings(),
         ),
+        onDidReceiveNotificationResponse: (response) {
+          final route = response.payload;
+          if (route != null && route.startsWith('/')) {
+            _routeHandler?.call(route);
+          }
+        },
       );
-
       if (Platform.isAndroid) {
         final android = _plugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
@@ -61,8 +83,6 @@ class FlutterLocalNotifikasi implements NotifikasiLokal {
             importance: Importance.high,
           ),
         );
-        // Android 13+ mewajibkan izin runtime; ditolak pun aplikasi tetap
-        // berjalan, hanya notifikasinya tidak tampil.
         await android?.requestNotificationsPermission();
       } else if (Platform.isIOS) {
         await _plugin
@@ -72,7 +92,6 @@ class FlutterLocalNotifikasi implements NotifikasiLokal {
       }
       _siap = true;
     } catch (e) {
-      // Platform tanpa dukungan / plugin belum terdaftar: jangan ganggu UI.
       _gagal = true;
       debugPrint('NotifikasiLokal.init dilewati: $e');
     }
@@ -83,6 +102,24 @@ class FlutterLocalNotifikasi implements NotifikasiLokal {
     required int id,
     required String judul,
     required String isi,
+  }) async {
+    await _tampilkan(id: id, judul: judul, isi: isi);
+  }
+
+  Future<void> tampilkanDenganRute({
+    required int id,
+    required String judul,
+    required String isi,
+    required String route,
+  }) async {
+    await _tampilkan(id: id, judul: judul, isi: isi, route: route);
+  }
+
+  Future<void> _tampilkan({
+    required int id,
+    required String judul,
+    required String isi,
+    String? route,
   }) async {
     await init();
     if (!_siap) return;
@@ -101,6 +138,7 @@ class FlutterLocalNotifikasi implements NotifikasiLokal {
           ),
           iOS: DarwinNotificationDetails(),
         ),
+        payload: route,
       );
     } catch (e) {
       debugPrint('NotifikasiLokal.tampilkan gagal: $e');
@@ -108,7 +146,6 @@ class FlutterLocalNotifikasi implements NotifikasiLokal {
   }
 }
 
-/// Implementasi kosong untuk test & platform tanpa notifikasi.
 class NotifikasiLokalNoop implements NotifikasiLokal {
   const NotifikasiLokalNoop();
 
@@ -121,4 +158,23 @@ class NotifikasiLokalNoop implements NotifikasiLokal {
     required String judul,
     required String isi,
   }) async {}
+}
+
+Future<void> tampilkanDenganRute({
+  required NotifikasiLokal notifikasi,
+  required int id,
+  required String judul,
+  required String isi,
+  required String route,
+}) async {
+  if (notifikasi is FlutterLocalNotifikasi) {
+    await notifikasi.tampilkanDenganRute(
+      id: id,
+      judul: judul,
+      isi: isi,
+      route: route,
+    );
+  } else {
+    await notifikasi.tampilkan(id: id, judul: judul, isi: isi);
+  }
 }
