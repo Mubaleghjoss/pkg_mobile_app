@@ -43,15 +43,30 @@ class FcmPushService {
     messaging.onTokenRefresh.listen((_) => registerCurrentToken());
   }
 
-  Future<void> registerCurrentToken() async {
-    if (kIsWeb) return;
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token == null || token.isEmpty) return;
-    await _dio.post<dynamic>('/mobile/device-token', data: {
-      'token': token,
-      'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
-      'app_version': null,
-    });
+  Future<bool> registerCurrentToken() async {
+    if (kIsWeb) return false;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null || token.isEmpty) {
+        debugPrint('FCM registration skipped: Firebase returned no token.');
+        return false;
+      }
+      final response = await _dio.post<dynamic>('/mobile/device-token', data: {
+        'token': token,
+        'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
+        'app_version': null,
+      });
+      final status = response.statusCode ?? 0;
+      if (status < 200 || status >= 300) {
+        debugPrint('FCM registration rejected by API: HTTP $status.');
+        return false;
+      }
+      debugPrint('FCM device token registered successfully.');
+      return true;
+    } catch (error) {
+      debugPrint('FCM registration failed: ${error.runtimeType}.');
+      return false;
+    }
   }
 
   Future<void> revokeCurrentToken() async {
@@ -81,7 +96,17 @@ class FcmPushService {
   String _routeOf(RemoteMessage message) {
     final raw = message.data['route'];
     // Notification routes are semantic app routes, never arbitrary URLs.
-    if (raw == '/chat') return raw;
+    const allowed = <String>{
+      '/chat',
+      '/tugas',
+      '/presensi',
+      '/kalender',
+      '/quran',
+      '/poin',
+      '/badge',
+      '/',
+    };
+    if (raw is String && allowed.contains(raw)) return raw;
     return '/';
   }
 
