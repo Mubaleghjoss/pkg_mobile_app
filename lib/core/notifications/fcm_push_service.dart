@@ -25,6 +25,7 @@ class FcmPushService {
   void Function(String route)? _routeHandler;
   bool _started = false;
   bool _authenticated = false;
+  int _lifecycleGeneration = 0;
 
   void setRouteHandler(void Function(String route) handler) {
     _routeHandler = handler;
@@ -32,28 +33,40 @@ class FcmPushService {
 
   Future<void> start() async {
     if (_started || kIsWeb) return;
+    final generation = ++_lifecycleGeneration;
     _started = true;
     _authenticated = true;
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission(alert: true, badge: true, sound: true);
     await messaging.setAutoInitEnabled(true);
+    if (!_isCurrent(generation)) return;
 
     _foregroundSubscription = FirebaseMessaging.onMessage.listen(_onMessage);
     _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(_onOpened);
     final initial = await messaging.getInitialMessage();
+    if (!_isCurrent(generation)) return;
     if (initial != null) _onOpened(initial);
-    await _registerWithRetry();
-    _tokenRefreshSubscription = messaging.onTokenRefresh.listen((_) => _registerWithRetry());
+    await _registerWithRetry(generation);
+    if (!_isCurrent(generation)) return;
+    _tokenRefreshSubscription = messaging.onTokenRefresh.listen((_) {
+      unawaited(_registerWithRetry(generation));
+    });
   }
 
-  Future<void> _registerWithRetry() async {
+  Future<void> _registerWithRetry(int generation) async {
     for (var attempt = 0; attempt < 3; attempt++) {
-      if (await registerCurrentToken()) return;
+      if (!_isCurrent(generation)) return;
+      if (await registerCurrentToken(generation)) return;
       await Future<void>.delayed(Duration(seconds: attempt + 1));
     }
   }
 
+  bool _isCurrent(int generation) {
+    return _started && _authenticated && _lifecycleGeneration == generation;
+  }
+
   Future<void> stop() async {
+    ++_lifecycleGeneration;
     _authenticated = false;
     try {
       await revokeCurrentToken();
@@ -69,8 +82,8 @@ class FcmPushService {
     _started = false;
   }
 
-  Future<bool> registerCurrentToken() async {
-    if (kIsWeb) return false;
+  Future<bool> registerCurrentToken([int? generation]) async {
+    if (kIsWeb || (generation != null && !_isCurrent(generation))) return false;
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null || token.isEmpty) {
@@ -82,6 +95,7 @@ class FcmPushService {
         'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
         'app_version': null,
       });
+      if (generation != null && !_isCurrent(generation)) return false;
       final status = response.statusCode ?? 0;
       if (status < 200 || status >= 300) {
         debugPrint('FCM registration rejected by API: HTTP $status.');
@@ -131,7 +145,6 @@ class FcmPushService {
       '/quran',
       '/poin',
       '/badge',
-      '/verifikasi',
       '/',
     };
     if (raw is String && allowed.contains(raw)) return raw;
