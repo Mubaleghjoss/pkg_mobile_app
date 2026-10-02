@@ -2,12 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_client.dart';
+import '../core/notifications/fcm_push_service.dart';
 import '../core/notifications/local_notifications.dart';
 import '../core/notifications/verifikasi_watcher.dart';
 import '../core/storage/session_store.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/calendar/data/calendar_repository.dart';
+import '../features/chat/data/chat_repository.dart';
 import '../features/dashboard/data/dashboard_repository.dart';
 import '../features/gamifikasi/data/gamifikasi_repository.dart';
 import '../features/game/data/game_repository.dart';
@@ -51,6 +53,10 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
   return CalendarRepository(ref.watch(dioProvider));
+});
+
+final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  return ChatRepository(ref.watch(dioProvider));
 });
 
 final siswaRepositoryProvider = Provider<SiswaRepository>((ref) {
@@ -119,6 +125,13 @@ final gameRepositoryProvider = Provider<GameRepository>((ref) {
 /// test widget supaya tidak menyentuh plugin platform.
 final notifikasiLokalProvider = Provider<NotifikasiLokal>((ref) {
   return FlutterLocalNotifikasi();
+});
+
+final fcmPushServiceProvider = Provider<FcmPushService>((ref) {
+  return FcmPushService(
+    dio: ref.watch(dioProvider),
+    notifications: ref.watch(notifikasiLokalProvider),
+  );
 });
 
 /// Pengawas tugas yang baru diverifikasi pamong (pemicu notifikasi lokal).

@@ -41,6 +41,8 @@ dependencies:
   google_mlkit_face_detection: ^0.15.1
   tflite_flutter: ^0.12.1
   image: ^4.10.1
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
 
 dev_dependencies:
   flutter_test:

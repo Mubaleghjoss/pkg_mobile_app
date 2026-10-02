@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "55308175812",
+    "project_id": "pkgenerus-mobile",
+    "storage_bucket": "pkgenerus-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:55308175812:android:f10513fb4cf7f34b0c7c91",
+        "android_client_info": {
+          "package_name": "id.pkgenerus.pkgenerus_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAf8NkbCRDVg2WMTQqZImOnTjLhD8MPElQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

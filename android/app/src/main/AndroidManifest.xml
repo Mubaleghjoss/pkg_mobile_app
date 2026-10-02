@@ -19,6 +19,13 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round">
+        <!-- FCM uses a simplified PKGenerus silhouette for system notifications. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_pkgenerus" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/pkg_notification_accent" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

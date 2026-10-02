@@ -76,19 +76,21 @@ class VerifikasiWatcher {
     if (pertamaKali || baru.isEmpty) return 0;
 
     if (baru.length == 1) {
-      await _notifikasi.tampilkan(
+      await _notifikasi.tampilkanDenganRute(
         id: baru.first.id,
         judul: 'Tugas diverifikasi pamong',
         isi: '"${baru.first.nama}" sudah diverifikasi. Poinnya masuk.',
+        route: '/tugas',
       );
       return 1;
     }
 
-    await _notifikasi.tampilkan(
+    await _notifikasi.tampilkanDenganRute(
       id: baru.first.id,
       judul: '${baru.length} tugas diverifikasi pamong',
       isi: baru.map((e) => e.nama).take(3).join(', ') +
           (baru.length > 3 ? ', dan lainnya' : ''),
+      route: '/tugas',
     );
     return baru.length;
   }
