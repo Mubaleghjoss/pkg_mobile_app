@@ -21,8 +21,10 @@ class FcmPushService {
   final NotifikasiLokal _notifications;
   StreamSubscription<RemoteMessage>? _openedSubscription;
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
+  StreamSubscription<String>? _tokenRefreshSubscription;
   void Function(String route)? _routeHandler;
   bool _started = false;
+  bool _authenticated = false;
 
   void setRouteHandler(void Function(String route) handler) {
     _routeHandler = handler;
@@ -31,6 +33,7 @@ class FcmPushService {
   Future<void> start() async {
     if (_started || kIsWeb) return;
     _started = true;
+    _authenticated = true;
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission(alert: true, badge: true, sound: true);
     await messaging.setAutoInitEnabled(true);
@@ -39,8 +42,31 @@ class FcmPushService {
     _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(_onOpened);
     final initial = await messaging.getInitialMessage();
     if (initial != null) _onOpened(initial);
-    await registerCurrentToken();
-    messaging.onTokenRefresh.listen((_) => registerCurrentToken());
+    await _registerWithRetry();
+    _tokenRefreshSubscription = messaging.onTokenRefresh.listen((_) => _registerWithRetry());
+  }
+
+  Future<void> _registerWithRetry() async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      if (await registerCurrentToken()) return;
+      await Future<void>.delayed(Duration(seconds: attempt + 1));
+    }
+  }
+
+  Future<void> stop() async {
+    _authenticated = false;
+    try {
+      await revokeCurrentToken();
+    } catch (error) {
+      debugPrint('FCM token revoke failed: ${error.runtimeType}.');
+    }
+    await _openedSubscription?.cancel();
+    await _foregroundSubscription?.cancel();
+    await _tokenRefreshSubscription?.cancel();
+    _openedSubscription = null;
+    _foregroundSubscription = null;
+    _tokenRefreshSubscription = null;
+    _started = false;
   }
 
   Future<bool> registerCurrentToken() async {
@@ -76,6 +102,7 @@ class FcmPushService {
   }
 
   void _onMessage(RemoteMessage message) {
+    if (!_authenticated) return;
     final notification = message.notification;
     if (notification == null) return;
     final route = _routeOf(message);
@@ -104,6 +131,7 @@ class FcmPushService {
       '/quran',
       '/poin',
       '/badge',
+      '/verifikasi',
       '/',
     };
     if (raw is String && allowed.contains(raw)) return raw;

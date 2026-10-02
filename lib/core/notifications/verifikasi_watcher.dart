@@ -80,7 +80,7 @@ class VerifikasiWatcher {
         id: baru.first.id,
         judul: 'Tugas diverifikasi pamong',
         isi: '"${baru.first.nama}" sudah diverifikasi. Poinnya masuk.',
-        route: '/verifikasi',
+        route: '/tugas',
       );
       return 1;
     }
@@ -90,7 +90,7 @@ class VerifikasiWatcher {
       judul: '${baru.length} tugas diverifikasi pamong',
       isi: baru.map((e) => e.nama).take(3).join(', ') +
           (baru.length > 3 ? ', dan lainnya' : ''),
-      route: '/verifikasi',
+      route: '/tugas',
     );
     return baru.length;
   }

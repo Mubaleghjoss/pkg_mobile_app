@@ -49,11 +49,15 @@ class FlutterLocalNotifikasi implements NotifikasiLokal {
 
   final FlutterLocalNotificationsPlugin _plugin;
   void Function(String route)? _routeHandler;
+  String? _pendingLaunchRoute;
   bool _siap = false;
   bool _gagal = false;
 
   void setRouteHandler(void Function(String route) handler) {
     _routeHandler = handler;
+    final pending = _pendingLaunchRoute;
+    _pendingLaunchRoute = null;
+    if (pending != null) handler(pending);
   }
 
   @override
@@ -72,6 +76,11 @@ class FlutterLocalNotifikasi implements NotifikasiLokal {
           }
         },
       );
+      final launch = await _plugin.getNotificationAppLaunchDetails();
+      final route = launch?.notificationResponse?.payload;
+      if (launch?.didNotificationLaunchApp == true && route != null && route.startsWith('/')) {
+        _pendingLaunchRoute = route;
+      }
       if (Platform.isAndroid) {
         final android = _plugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
