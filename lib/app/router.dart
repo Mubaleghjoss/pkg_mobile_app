@@ -6,6 +6,7 @@ import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/app_update/presentation/app_update_coordinator.dart';
 import '../features/calendar/presentation/calendar_screen.dart';
+import '../features/chat/presentation/chat_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/game/presentation/arcade_screen.dart';
 import '../features/game/presentation/game_screen.dart';
@@ -304,6 +305,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/tugas/riwayat',
         pageBuilder: (_, state) =>
             _slidePage(child: const TugasRiwayatScreen(), state: state),
+      ),
+      GoRoute(
+        path: '/chat',
+        pageBuilder: (_, state) =>
+            _slidePage(child: const ChatScreen(), state: state),
       ),
       ShellRoute(
         builder: (context, state, child) => AppUpdateCoordinator(

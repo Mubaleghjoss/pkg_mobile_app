@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_client.dart';
 import '../core/notifications/local_notifications.dart';
+import '../core/notifications/push_notification_service.dart';
 import '../core/notifications/verifikasi_watcher.dart';
 import '../core/storage/session_store.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/calendar/data/calendar_repository.dart';
+import '../features/chat/data/chat_repository.dart';
 import '../features/dashboard/data/dashboard_repository.dart';
 import '../features/gamifikasi/data/gamifikasi_repository.dart';
 import '../features/game/data/game_repository.dart';
@@ -42,6 +44,12 @@ final dioProvider = Provider<Dio>((ref) {
   return factory.dio;
 });
 
+final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
+  final service = PushNotificationService(dio: ref.watch(dioProvider));
+  ref.onDispose(service.dispose);
+  return service;
+});
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
     dio: ref.watch(dioProvider),
@@ -51,6 +59,10 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
   return CalendarRepository(ref.watch(dioProvider));
+});
+
+final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  return ChatRepository(ref.watch(dioProvider));
 });
 
 final siswaRepositoryProvider = Provider<SiswaRepository>((ref) {
