@@ -31,6 +31,8 @@ dependencies:
   package_info_plus: ^10.2.1
   flutter_svg: ^2.3.0
   flutter_local_notifications: 19.4.2
+  firebase_core: ^4.2.1
+  firebase_messaging: ^16.0.4
   webview_flutter: ^4.14.1
   quran_api: ^0.1.1
   qcf_quran: ^0.0.5

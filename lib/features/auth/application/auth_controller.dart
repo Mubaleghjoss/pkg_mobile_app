@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
@@ -73,6 +75,7 @@ class AuthController extends Notifier<AuthState> {
         status: AuthStatus.authenticated,
         session: result.data,
       );
+      unawaited(_registerPush(result.data!));
       return;
     }
 
@@ -124,9 +127,14 @@ class AuthController extends Notifier<AuthState> {
     return _finishLogin(result);
   }
 
+  Future<void> _registerPush(AuthSession session) async {
+    await ref.read(pushNotificationServiceProvider).register(session);
+  }
+
   bool _finishLogin(ApiResult<AuthSession> result) {
     if (result.ok && result.data != null) {
       state = AuthState(status: AuthStatus.authenticated, session: result.data);
+      unawaited(_registerPush(result.data!));
       return true;
     }
 
@@ -138,6 +146,7 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    await ref.read(pushNotificationServiceProvider).unregister();
     await ref.read(authRepositoryProvider).logout();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }

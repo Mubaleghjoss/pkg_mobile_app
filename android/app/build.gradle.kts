@@ -70,18 +70,18 @@ android {
 
     buildTypes {
         release {
-            // APK rilis WAJIB ditandatangani keystore sendiri. Tanpa
-            // key.properties build release gagal cepat, bukan diam-diam
-            // memakai kunci debug (APK debug tidak boleh dibagikan ke publik).
-            signingConfig = if (keystoreProperties.isNotEmpty()) {
-                signingConfigs.getByName("release")
-            } else {
-                throw GradleException(
-                    "android/key.properties tidak ditemukan. " +
-                        "Build release butuh keystore rilis; lihat docs/mobile-release.md."
-                )
+                // APK rilis WAJIB ditandatangani keystore sendiri. Tanpa
+                // key.properties build release gagal cepat, bukan diam-diam
+                // memakai kunci debug (APK debug tidak boleh dibagikan ke publik).
+                if (keystoreProperties.isNotEmpty()) {
+                    signingConfig = signingConfigs.getByName("release")
+                } else if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
+                    throw GradleException(
+                        "android/key.properties tidak ditemukan. " +
+                            "Build release butuh keystore rilis; lihat docs/mobile-release.md."
+                    )
+                }
             }
-        }
     }
 }
 

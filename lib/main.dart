@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import 'core/notifications/notification_intent.dart';
+import 'app/providers.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -19,11 +24,27 @@ Future<void> main() async {
   runApp(const ProviderScope(child: PkgApp()));
 }
 
-class PkgApp extends ConsumerWidget {
+class PkgApp extends ConsumerStatefulWidget {
   const PkgApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PkgApp> createState() => _PkgAppState();
+}
+
+class _PkgAppState extends ConsumerState<PkgApp> {
+  @override
+  void initState() {
+    super.initState();
+    final push = ref.read(pushNotificationServiceProvider);
+    push.onIntent = (intent) {
+      if (!mounted) return;
+      ref.read(routerProvider).go(notificationRouteFor(intent));
+    };
+    unawaited(push.initialize());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
 
